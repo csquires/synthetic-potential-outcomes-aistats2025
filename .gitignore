@@ -1,5 +1,5 @@
 venv/
-**/**__pycache__/**
+**/__pycache__/**
 experiments/ate_experiment/results.pkl
 experiments/mte_experiment/results.pkl
 **/*.DS_Store
