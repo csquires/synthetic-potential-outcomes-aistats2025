@@ -6,24 +6,25 @@ from typing import Dict
 import numpy as np
 
 # === IMPORTS: LOCAL ===
-from src.problem_config import ProblemConfig
+from src.problem_dims import ProblemDimensions
 
 
 class EmpiricalMoments:
-    def __init__(self, config: ProblemConfig, obs_samples: np.ndarray):
-        self.config = config
+    def __init__(self, problem_dims: ProblemDimensions, obs_samples: np.ndarray):
+        self.problem_dims = problem_dims
         self.obs_samples = obs_samples
 
         # split samples by treatment
         self.t2samples: Dict[int, np.ndarray] = dict()
-        for t in range(config.ntreatments):
-            self.t2samples[t] = obs_samples[obs_samples[:, config.t_ix] == t][:, config.xmy_ixs]
+        for t in range(problem_dims.ntreatments):
+            self.t2samples[t] = obs_samples[obs_samples[:, problem_dims.t_ix] == t][:, problem_dims.zxy_ixs]
 
         # split samples by treatment
         self._stored_expectations = None
         self._stored_conditional_expectations = None
         self._stored_conditional_second_moments = None
         self._stored_conditional_third_moments = None
+        self._stored_third_moments = None
         self._stored_conditional_higher_moments = defaultdict(lambda: None)
 
     @property
@@ -62,6 +63,14 @@ class EmpiricalMoments:
                 self._stored_conditional_third_moments[t] = moment
 
         return self._stored_conditional_third_moments
+    
+    @property
+    def third_moments(self):
+        if self._stored_third_moments is None:
+            samples = self.obs_samples
+            self._stored_third_moments = np.einsum("ij,ik,im->jkm", samples, samples, samples) / samples.shape[0]
+
+        return self._stored_third_moments
     
     def conditional_higher_moments(self, order) -> Dict[int, np.ndarray]:
         if self._stored_conditional_higher_moments[order] is None:

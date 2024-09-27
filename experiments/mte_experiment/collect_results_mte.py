@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import trange
 
 # === IMPORTS: LOCAL ===
-from src.problem_config import ProblemConfig
+from src.problem_dims import ProblemDimensions
 from src.data_generation.discrete_generator import DiscreteFixedGenerator
 
 from src.population_moments_binary import PopulationMomentsBinary
@@ -17,42 +17,36 @@ from src.methods.synthetic_potential_outcomes import SyntheticPotentialOutcomes
 
 np.random.seed(123)
 # ==== DEFINE THE PROBLEM CONFIGURATION ====
-nproxies = 6
-nmodifiers = 0
+nz = 2
+nx = 2
 ngroups = 2
 ntreatments = 2
-config = ProblemConfig(nproxies, nmodifiers, ngroups, ntreatments)
-xref = [0, 1]
-xsyn1 = [2, 3]
-xsyn2 = [4, 5]
+problem_dims = ProblemDimensions(nz, nx, ngroups, ntreatments)
 
 # ==== DEFINE DATA GENERATOR ====
-generator = DiscreteFixedGenerator(config, matching_coef=0.25, treatment_coef=0.25)
-population_moments = PopulationMomentsBinary(config, generator.true_marginal())
+generator = DiscreteFixedGenerator(problem_dims, matching_coef=0.25, treatment_coef=0.25)
+population_moments = PopulationMomentsBinary(problem_dims, generator.true_marginal())
 true_source_probs, true_means = compute_source_probs_and_means(population_moments.p_ytu)
 
 # ==== RUN METHOD ====
 nsamples = int(5e5)
 nruns = 100
-all_estimated_source_probs = np.zeros((nruns, config.ngroups))
-all_estimated_means = np.zeros((nruns, config.ngroups))
+all_estimated_source_probs = np.zeros((nruns, problem_dims.ngroups))
+all_estimated_means = np.zeros((nruns, problem_dims.ngroups))
 for r in trange(nruns):
     # ==== GENERATE SAMPLES AND COMPUTE MOMENTS ====
     full_samples, obs_samples = generator.generate(nsamples=nsamples)
-    moments = EmpiricalMoments(config, obs_samples)
+    moments = EmpiricalMoments(problem_dims, obs_samples)
     expectations = moments.expectations
     conditional_second_moments = moments.conditional_second_moments
     conditional_third_moments = moments.conditional_third_moments
 
     # ==== RUN METHOD ====
-    spo = SyntheticPotentialOutcomes(config, decomposition_method="matrix_pencil")
+    spo = SyntheticPotentialOutcomes(problem_dims, decomposition_method="matrix_pencil")
     res = spo.fit_fixed_partition(
         expectations, 
         conditional_second_moments, 
         conditional_third_moments,
-        xref, 
-        xsyn1,
-        xsyn2
     )
 
     # === SAVE RESULTS ===

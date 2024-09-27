@@ -2,34 +2,34 @@
 import numpy as np
 
 # === IMPORTS: LOCAL ===
-from src.problem_config import ProblemConfig
+from src.problem_dims import ProblemDimensions
 
 
 class DiscreteFixedGenerator:
     def __init__(
             self, 
-            config: ProblemConfig, 
+            problem_dims: ProblemDimensions, 
             matching_coef: float = 0.25,
             treatment_coef: float = 0.25,
             subgroup_coef: float = 0,
             proxy_biases: np.ndarray = None,
             proxy_shift: float = 0.3
         ):
-        self.config = config
+        self.problem_dims = problem_dims
         self.matching_coef = matching_coef
         self.treatment_coef = treatment_coef
         self.subgroup_coef = subgroup_coef
 
         if proxy_biases is None:
-            proxy_biases = np.linspace(0.2, 0.6, config.nproxies)
+            proxy_biases = np.linspace(0.2, 0.6, problem_dims.nz + problem_dims.nx)
         self.proxy_biases = proxy_biases
         self.proxy_shift = proxy_shift
 
     def generate(self, nsamples: int):
-        nproxies = self.config.nproxies
-        y_ix = self.config.y_ix
-        t_ix = self.config.t_ix
-        u_ix = self.config.u_ix
+        nproxies = self.problem_dims.nz + self.problem_dims.nx
+        y_ix = self.problem_dims.y_ix
+        t_ix = self.problem_dims.t_ix
+        u_ix = self.problem_dims.u_ix
         full_samples = np.ndarray((nsamples, nproxies + 3))
 
         u_vals = np.random.binomial(n=1, p=0.5, size=nsamples)
@@ -90,7 +90,7 @@ class DiscreteFixedGenerator:
 
 if __name__ == "__main__":
     nproxies = 4
-    config = ProblemConfig(nproxies=nproxies, nmodifiers=0, ngroups=2, ntreatments=2)
+    config = ProblemDimensions(nproxies=nproxies, ngroups=2, ntreatments=2)
     generator = DiscreteFixedGenerator(config)
     full_samples, obs_samples = generator.generate(1000)
     u0_samples = full_samples[full_samples[:, config.u_ix] == 0]

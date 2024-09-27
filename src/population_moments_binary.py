@@ -7,7 +7,7 @@ import itertools as itr
 import numpy as np
 
 # === IMPORTS: LOCAL ===
-from src.problem_config import ProblemConfig
+from src.problem_dims import ProblemDimensions
 
 
 def complement(nvariables: int, subset: int):
@@ -44,7 +44,7 @@ def compute_R_moments(
 
 
 class PopulationMomentsBinary:
-    def __init__(self, config: ProblemConfig, full_marginal: np.ndarray):
+    def __init__(self, config: ProblemDimensions, full_marginal: np.ndarray):
         self.config = config
         self.full_marginal = full_marginal
         self.obs_marginal = full_marginal.sum(axis=config.u_ix)

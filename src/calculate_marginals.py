@@ -2,12 +2,12 @@
 import numpy as np
 
 # === IMPORTS: LOCAL ===
-from src.problem_config import ProblemConfig
+from src.problem_dims import ProblemDimensions
 
 
 
 class MarginalsCalculator:
-    def __init__(self, config: ProblemConfig, full_samples: np.ndarray):
+    def __init__(self, config: ProblemDimensions, full_samples: np.ndarray):
         self.config = config
         self.full_samples = full_samples
 

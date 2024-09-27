@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import trange
 
 # === IMPORTS: LOCAL ===
-from src.problem_config import ProblemConfig
+from src.problem_dims import ProblemDimensions
 from src.data_generation.discrete_generator import DiscreteFixedGenerator
 
 from src.population_moments_binary import PopulationMomentsBinary
@@ -16,18 +16,16 @@ from src.methods.synthetic_potential_outcomes import SyntheticPotentialOutcomes
 
 np.random.seed(123)
 # ==== DEFINE THE PROBLEM CONFIGURATION ====
-nproxies = 6
-nmodifiers = 0
+nz = 2
+nx = 2
 ngroups = 2
 ntreatments = 2
-config = ProblemConfig(nproxies, nmodifiers, ngroups, ntreatments)
-xref = [0, 1]
-xsyn1 = [2, 3]
+problem_dims = ProblemDimensions(nz, nx, ngroups, ntreatments)
 
 # ==== DEFINE DATA GENERATOR ====
-generator = DiscreteFixedGenerator(config, matching_coef=0.25, treatment_coef=0.25)
+generator = DiscreteFixedGenerator(problem_dims, matching_coef=0.25, treatment_coef=0.25)
 marginal = generator.true_marginal()
-oracle_moments = PopulationMomentsBinary(config, marginal)
+oracle_moments = PopulationMomentsBinary(problem_dims, marginal)
 true_mean_y0 = oracle_moments.moments_Y0(1)[1]  # 0th moment is 1, 1st moment is mean
 true_mean_y1 = oracle_moments.moments_Y1(1)[1]  # 0th moment is 1, 1st moment is mean
 
@@ -39,13 +37,13 @@ y1_ests = np.zeros(nruns)
 for r in trange(nruns):
     # ==== GENERATE SAMPLES AND COMPUTE MOMENTS ====
     full_samples, obs_samples = generator.generate(nsamples=nsamples)
-    moments = EmpiricalMoments(config, obs_samples)
+    moments = EmpiricalMoments(problem_dims, obs_samples)
     expectations = moments.expectations
     conditional_second_moments = moments.conditional_second_moments
 
     # ==== RUN METHOD ====
-    spo = SyntheticPotentialOutcomes(config)
-    y0_est, y1_est, _ = spo.only_first_step(expectations, conditional_second_moments, xref, xsyn1)
+    spo = SyntheticPotentialOutcomes(problem_dims)
+    y0_est, y1_est, _ = spo.only_first_step(expectations, conditional_second_moments)
     y0_ests[r] = y0_est
     y1_ests[r] = y1_est
 
