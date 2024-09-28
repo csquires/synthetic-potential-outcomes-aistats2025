@@ -9,8 +9,8 @@ from tqdm import trange
 from src.problem_dims import ProblemDimensions
 from src.data_generation.discrete_generator import DiscreteFixedGenerator
 
-from src.population_moments_binary import PopulationMomentsBinary
-from src.empirical_moments import EmpiricalMoments
+from src.moments.population_moments_binary import PopulationMomentsBinary
+from src.moments.empirical_moments import EmpiricalMoments
 from src.methods.synthetic_potential_outcomes import SyntheticPotentialOutcomes
 
 
@@ -43,7 +43,7 @@ for r in trange(nruns):
 
     # ==== RUN METHOD ====
     spo = SyntheticPotentialOutcomes(problem_dims)
-    y0_est, y1_est, _ = spo.only_first_step(expectations, conditional_second_moments)
+    y0_est, y1_est = spo.only_first_step(expectations, conditional_second_moments)
     y0_ests[r] = y0_est
     y1_ests[r] = y1_est
 

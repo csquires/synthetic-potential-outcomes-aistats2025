@@ -8,6 +8,7 @@ import numpy as np
 
 # === IMPORTS: LOCAL ===
 from src.problem_dims import ProblemDimensions
+from src.moments.moments import Moments
 
 
 def complement(nvariables: int, subset: int):
@@ -43,7 +44,7 @@ def compute_R_moments(
     return moments
 
 
-class PopulationMomentsBinary:
+class PopulationMomentsBinary(Moments):
     def __init__(self, config: ProblemDimensions, full_marginal: np.ndarray):
         self.config = config
         self.full_marginal = full_marginal
@@ -70,29 +71,27 @@ class PopulationMomentsBinary:
     def moments_Y1(self, max_order: int):
         moments = [1]
         for order in range(1, max_order+1):
-            mean_y1_given_u = self.p_ytu[1, 1] / self.p_tu[1]
-            moments_r_given_u = mean_y1_given_u ** order
-            moment = (self.p_u * moments_r_given_u).sum()
+            mean_y1_given_u = np.einsum("u,u->u", self.p_ytu[1, 1, :], self.p_tu[1, :]**-1)
+            moments_y1_given_u = mean_y1_given_u ** order
+            moment = np.einsum("u,u", self.p_u, moments_y1_given_u)
             moments.append(moment)
         return moments
 
     def moments_Y0(self, max_order: int):
         moments = [1]
         for order in range(1, max_order+1):
-            mean_y0_given_u = self.p_ytu[1, 0] / self.p_tu[0]
-            moments_r_given_u = mean_y0_given_u ** order
-            moment = (self.p_u * moments_r_given_u).sum()
+            mean_y0_given_u = np.einsum("u,u->u", self.p_ytu[1, 0, :], self.p_tu[0, :]**-1)
+            moments_y0_given_u = mean_y0_given_u ** order
+            moment = np.einsum("u,u", self.p_u, moments_y0_given_u)
             moments.append(moment)
         return moments
     
     def moments_R(self, max_order: int):
         moments = [1]
         for order in range(1, max_order+1):
-            mean_y1_given_u = self.p_ytu[1, 1] / self.p_tu[1]
-            mean_y0_given_u = self.p_ytu[1, 0] / self.p_tu[0]
-            mean_R_given_u = mean_y1_given_u - mean_y0_given_u
-            moments_r_given_u = mean_R_given_u ** order
-            moment = (self.p_u * moments_r_given_u).sum()
+            mean_r_given_u = np.einsum("u,u->u", self.p_ytu[1, 1, :] - self.p_ytu[1, 0, :], self.p_tu[1, :]**-1)
+            moments_r_given_u = mean_r_given_u ** order
+            moment = np.einsum("u,u", self.p_u, moments_r_given_u)
             moments.append(moment)
         return moments
     
@@ -103,7 +102,7 @@ class PopulationMomentsBinary:
         return self.p_ytu[1, 0] / self.p_tu[0]
 
     @property
-    def expectations(self) -> Dict[int, np.ndarray]:
+    def expectations(self) -> np.ndarray:
         if self._stored_expectations is None:
             self._compute_expectations()
         return self._stored_expectations

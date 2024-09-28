@@ -9,9 +9,9 @@ from tqdm import trange
 from src.problem_dims import ProblemDimensions
 from src.data_generation.discrete_generator import DiscreteFixedGenerator
 
-from src.population_moments_binary import PopulationMomentsBinary
-from src.empirical_moments import EmpiricalMoments
-from src.population_moments_binary import compute_source_probs_and_means
+from src.moments.population_moments_binary import PopulationMomentsBinary
+from src.moments.empirical_moments import EmpiricalMoments
+from src.moments.population_moments_binary import compute_source_probs_and_means
 from src.methods.synthetic_potential_outcomes import SyntheticPotentialOutcomes
 
 
@@ -37,17 +37,10 @@ for r in trange(nruns):
     # ==== GENERATE SAMPLES AND COMPUTE MOMENTS ====
     full_samples, obs_samples = generator.generate(nsamples=nsamples)
     moments = EmpiricalMoments(problem_dims, obs_samples)
-    expectations = moments.expectations
-    conditional_second_moments = moments.conditional_second_moments
-    conditional_third_moments = moments.conditional_third_moments
 
     # ==== RUN METHOD ====
     spo = SyntheticPotentialOutcomes(problem_dims, decomposition_method="matrix_pencil")
-    res = spo.fit_fixed_partition(
-        expectations, 
-        conditional_second_moments, 
-        conditional_third_moments,
-    )
+    res = spo.fit(moments)
 
     # === SAVE RESULTS ===
     recovered_source_probs = res["source_probs"]

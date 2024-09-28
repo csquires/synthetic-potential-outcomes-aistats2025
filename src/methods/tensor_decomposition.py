@@ -7,7 +7,7 @@ import numpy as np
 from tensorly.decomposition import parafac
 
 # === IMPORTS: LOCAL ===
-from src.empirical_moments import EmpiricalMoments
+from moments.empirical_moments import EmpiricalMoments
 from src.problem_dims import ProblemDimensions
 
 
@@ -15,7 +15,7 @@ class TensorDecomposition:
     def __init__(self, config: ProblemDimensions):
         self.config = config
 
-    def fit(self, moments: EmpiricalMoments, xref, xsyn1):
+    def fit(self, moments: EmpiricalMoments):
         expectations = moments.expectations
         conditional_second_moments = moments.conditional_second_moments
         conditional_third_moments = moments.conditional_third_moments

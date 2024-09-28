@@ -7,9 +7,10 @@ import numpy as np
 
 # === IMPORTS: LOCAL ===
 from src.problem_dims import ProblemDimensions
+from src.moments.moments import Moments
 
 
-class EmpiricalMoments:
+class EmpiricalMoments(Moments):
     def __init__(self, problem_dims: ProblemDimensions, obs_samples: np.ndarray):
         self.problem_dims = problem_dims
         self.obs_samples = obs_samples
@@ -28,7 +29,7 @@ class EmpiricalMoments:
         self._stored_conditional_higher_moments = defaultdict(lambda: None)
 
     @property
-    def expectations(self) -> Dict[int, np.ndarray]:
+    def expectations(self) -> np.ndarray:
         if self._stored_expectations is None:
             self._stored_expectations = np.mean(self.obs_samples, axis=0)
 
@@ -59,7 +60,7 @@ class EmpiricalMoments:
         if self._stored_conditional_third_moments is None:
             self._stored_conditional_third_moments = dict()
             for t, samples_t in self.t2samples.items():
-                moment = np.einsum("ij,ik,i->jk", samples_t, samples_t, samples_t[:, self.config.y_ix]) / samples_t.shape[0]
+                moment = np.einsum("ij,ik,i->jk", samples_t, samples_t, samples_t[:, self.problem_dims.y_ix]) / samples_t.shape[0]
                 self._stored_conditional_third_moments[t] = moment
 
         return self._stored_conditional_third_moments

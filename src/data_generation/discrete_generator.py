@@ -52,38 +52,44 @@ class DiscreteFixedGenerator:
         obs_samples = full_samples[:, :-1]
         return full_samples, obs_samples
     
+    def p_t_given_u(self):
+        P = np.zeros((2, 2))
+        P[:, 0] = np.array([1/4, 3/4])  # given U = 0
+        P[:, 1] = np.array([3/4, 1/4])  # given U = 1
+        return P
+    
+    def p_y_given_tu(self):
+        a = self.matching_coef   # add when U=T
+        b = self.treatment_coef  # add when T=1
+        c = self.subgroup_coef   # add when U=1
+        P = np.zeros((2, 2, 2))
+        P[:, 0, 0] = np.array([3/4 - a, 1/4 + a])  # given T=0, U=0
+        P[:, 0, 1] = np.array([3/4 - c, 1/4 + c])  # given T=0, U=1
+        P[:, 1, 0] = np.array([3/4 - b, 1/4 + b])  # given T=1, U=0
+        P[:, 1, 1] = np.array([3/4 - a - b - c, 1/4 + a + b + c])  # given T=1, U=1
+        return P
+    
+    def proxy_conditional(self, i):
+        proxy_bias = self.proxy_biases[i]
+        proxy_shift = self.proxy_shift
+        P = np.zeros((2, 2))
+        if i % 2 == 0:
+            P[:, 0] = np.array([1 - proxy_bias, proxy_bias])  # given U=0
+            P[:, 1] = np.array([1 - proxy_bias - proxy_shift, proxy_bias + proxy_shift])  # given U=1
+        else:
+            P[:, 0] = np.array([1 - proxy_bias - proxy_shift, proxy_bias + proxy_shift])  # given U=0
+            P[:, 1] = np.array([1 - proxy_bias, proxy_bias])  # given U=1
+        return P
+    
     def true_marginal(self):
-        p_u = np.array([0.5, 0.5])
-        p_t_given_u = np.array([
-            [1/4, 3/4],  # given U=0
-            [3/4, 1/4]   # given U=1
-        ])
-        a = self.matching_coef
-        b = self.treatment_coef
-        c = self.subgroup_coef
-        p_y_given_tu = np.array([
-            [[3/4 - a, 1/4 + a],  # given T=0, U=0
-             [3/4 - c, 1/4 + c]], # given T=0, U=1  
-            [[3/4 - b, 1/4 + b],  # given T=1, U=0
-             [3/4 - a - b -c, 1/4 + a + b + c]]  # given T=1, U=1
-        ])
-        proxy_conditionals = []
-        for i, proxy_bias in enumerate(self.proxy_biases):
-            if i % 2 == 0:
-                conditional = np.array([
-                    [1-proxy_bias, proxy_bias],  # given U=0
-                    [1-proxy_bias-self.proxy_shift, proxy_bias+self.proxy_shift]   # given U=1
-                ])
-            else:
-                conditional = np.array([
-                    [1-proxy_bias-self.proxy_shift, proxy_bias+self.proxy_shift],  # given U=0
-                    [1-proxy_bias, proxy_bias]   # given U=1
-                ])
-            proxy_conditionals.append(conditional)
+        p_u = np.array([0.5, 0.5])  # u
+        p_t_given_u = self.p_t_given_u()  # t, u
+        p_y_given_tu = self.p_y_given_tu()  # y, t, u
+        proxy_conditionals = [self.proxy_conditional(i) for i in range(self.problem_dims.nx + self.problem_dims.nz)]
         
-        current_marginal = np.einsum("tuy,ut,u->ytu", p_y_given_tu, p_t_given_u, p_u)
+        current_marginal = np.einsum("ytu,tu,u->ytu", p_y_given_tu, p_t_given_u, p_u)
         for proxy_conditional in reversed(proxy_conditionals):
-            current_marginal = np.einsum("uv,...u->v...u", proxy_conditional, current_marginal)
+            current_marginal = np.einsum("vu,...u->v...u", proxy_conditional, current_marginal)
 
         return current_marginal
     
