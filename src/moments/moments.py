@@ -8,21 +8,29 @@ import numpy as np
 
 class Moments(ABC):
     @property
-    def expectations(self) -> np.ndarray:
-        raise NotImplementedError
-
-    @property
-    def conditional_expectations(self) -> Dict[int, np.ndarray]:
-        raise NotImplementedError
-
-    @property
-    def conditional_second_moments(self) -> Dict[int, np.ndarray]:
+    def E_X(self) -> np.ndarray:
         raise NotImplementedError
     
     @property
-    def conditional_third_moments(self):
+    def E_Z(self) -> np.ndarray:
+        raise NotImplementedError
+
+    @property
+    def E_X_T(self) -> Dict[int, np.ndarray]:
         raise NotImplementedError
     
     @property
-    def third_moments(self):
+    def E_Z_t(self) -> Dict[int, np.ndarray]:
+        raise NotImplementedError
+
+    @property
+    def M_ZX_T(self) -> Dict[int, np.ndarray]:
+        raise NotImplementedError
+    
+    @property
+    def M_ZXY_T(self):
+        raise NotImplementedError
+    
+    @property
+    def M_ZXtY(self):
         raise NotImplementedError

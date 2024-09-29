@@ -26,17 +26,33 @@ class EmpiricalMoments(Moments):
         self._stored_conditional_second_moments = None
         self._stored_conditional_third_moments = None
         self._stored_third_moments = None
-        self._stored_conditional_higher_moments = defaultdict(lambda: None)
 
     @property
-    def expectations(self) -> np.ndarray:
+    def E_X(self) -> np.ndarray:
+        if self._stored_expectations is None:
+            self._stored_expectations = np.mean(self.obs_samples, axis=0)
+
+        return self._stored_expectations
+    
+    @property
+    def E_Z(self) -> np.ndarray:
         if self._stored_expectations is None:
             self._stored_expectations = np.mean(self.obs_samples, axis=0)
 
         return self._stored_expectations
 
     @property
-    def conditional_expectations(self) -> Dict[int, np.ndarray]:
+    def E_X_T(self) -> Dict[int, np.ndarray]:
+        if self._stored_conditional_expectations is None:
+            self._stored_conditional_expectations = dict()
+            for t, samples_t in self.t2samples.items():
+                conditional_expectation = samples_t.mean(axis=0)
+                self._stored_conditional_expectations[t] = conditional_expectation
+
+        return self._stored_conditional_expectations
+    
+    @property
+    def E_Z_T(self) -> Dict[int, np.ndarray]:
         if self._stored_conditional_expectations is None:
             self._stored_conditional_expectations = dict()
             for t, samples_t in self.t2samples.items():
@@ -46,7 +62,7 @@ class EmpiricalMoments(Moments):
         return self._stored_conditional_expectations
 
     @property
-    def conditional_second_moments(self) -> Dict[int, np.ndarray]:
+    def M_ZX_T(self) -> Dict[int, np.ndarray]:
         if self._stored_conditional_second_moments is None:
             self._stored_conditional_second_moments = dict()
             for t, samples_t in self.t2samples.items():
@@ -56,7 +72,7 @@ class EmpiricalMoments(Moments):
         return self._stored_conditional_second_moments
     
     @property
-    def conditional_third_moments(self):
+    def M_ZXY_T(self) -> Dict[int, np.ndarray]:
         if self._stored_conditional_third_moments is None:
             self._stored_conditional_third_moments = dict()
             for t, samples_t in self.t2samples.items():
@@ -66,7 +82,7 @@ class EmpiricalMoments(Moments):
         return self._stored_conditional_third_moments
     
     @property
-    def third_moments(self):
+    def M_ZXtY(self):
         if self._stored_third_moments is None:
             samples = self.obs_samples
             t_onehot = (samples[:, self.problem_dims.t_ix] == np.array([[0], [1]])).T
@@ -75,15 +91,3 @@ class EmpiricalMoments(Moments):
             self._stored_third_moments = np.einsum("ij,ik,im->jkm", samples, samples, y_tilde_samples) / samples.shape[0]
 
         return self._stored_third_moments
-    
-    def conditional_higher_moments(self, order) -> Dict[int, np.ndarray]:
-        if self._stored_conditional_higher_moments[order] is None:
-            self._stored_conditional_higher_moments[order] = dict()
-            dims = "jklmnopqrstuvwxyz"[:order]
-            for t, samples_t in self.t2samples.items():
-                pattern = ",".join([f"i{dim}" for dim in dims]) + "->" + dims
-                print(pattern)
-                moment = np.einsum(pattern, *(samples_t for _ in range(order))) / samples_t.shape[0]
-                self._stored_conditional_higher_moments[order][t] = moment
-        
-        return self._stored_conditional_higher_moments[order]

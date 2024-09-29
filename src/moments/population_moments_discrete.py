@@ -90,30 +90,42 @@ class PopulationMomentsDiscrete(Moments):
         return moments
     
     @property
-    def expectations(self) -> np.ndarray:
+    def E_X(self) -> np.ndarray:
         if self._stored_expectations is None:
             self._compute_expectations()
         return self._stored_expectations
 
     @property
-    def conditional_expectations(self) -> Dict[int, np.ndarray]:
+    def E_Z(self) -> np.ndarray:
+        if self._stored_expectations is None:
+            self._compute_expectations()
+        return self._stored_expectations
+    
+    @property
+    def E_X_T(self) -> Dict[int, np.ndarray]:
         if self._stored_conditional_expectations is None:
             self._compute_conditional_expectations()
         return self._stored_conditional_expectations
     
     @property
-    def conditional_second_moments(self) -> Dict[int, np.ndarray]:
+    def E_Z_T(self) -> Dict[int, np.ndarray]:
+        if self._stored_conditional_expectations is None:
+            self._compute_conditional_expectations()
+        return self._stored_conditional_expectations
+    
+    @property
+    def M_ZX_T(self) -> Dict[int, np.ndarray]:
         if self._stored_conditional_second_moments is None:
             self._compute_conditional_second_moments()
         return self._stored_conditional_second_moments
     
     @property
-    def conditional_third_moments(self) -> Dict[int, np.ndarray]:
+    def M_ZXY_T(self) -> Dict[int, np.ndarray]:
         if self._stored_conditional_third_moments is None:
             self._compute_conditional_third_moments()
         return self._stored_conditional_third_moments
     
-    def third_moments(self) -> np.ndarray:
+    def M_ZXtY(self) -> np.ndarray:
         if self._stored_third_moments is None:
             self._compute_third_moments()
         return self._stored_third_moments
@@ -124,6 +136,8 @@ class PopulationMomentsDiscrete(Moments):
     def _compute_third_moments(self):
         self._stored_expectations = np.concatenate((self.Pz, self.Px))
         result = np.zeros([self.dz, self.dx, 2])
+        # (zx(yt)->|z| |x| |yt|)
+        result = self.Pzxyt[:, :, 1, :]
         self._stored_third_moments = result
     
     def _compute_conditional_expectations(self):
