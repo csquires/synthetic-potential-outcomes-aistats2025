@@ -1,22 +1,20 @@
 # === IMPORTS: BUILT-IN ===
-from collections import defaultdict
 from typing import Dict
 
 # === IMPORTS: THIRD-PARTY ===
 import numpy as np
 
 # === IMPORTS: LOCAL ===
-from src.problem_dims import ProblemDimensions
 from src.moments.moments import Moments
 
 
 
 class PopulationMomentsDiscrete(Moments):
-    def __init__(self, problem_dims: ProblemDimensions, full_marginal: np.ndarray):
-        self.dz = problem_dims.nz
-        self.dx = problem_dims.nx
-        self.ntreatments = problem_dims.ntreatments
-        self.ngroups = problem_dims.ngroups
+    def __init__(self, full_marginal: np.ndarray):
+        self.dz = full_marginal.shape[0]
+        self.dx = full_marginal.shape[1]
+        self.ntreatments = full_marginal.shape[3]
+        self.ngroups = full_marginal.shape[4]
 
         self.full_marginal = full_marginal  # (z, x, y, t, u)
         self.Pzxyt = np.einsum("zxytu->zxyt", full_marginal)
@@ -43,24 +41,20 @@ class PopulationMomentsDiscrete(Moments):
         
         # === UNOBSERVED ===
         # 3-way marginals
+        self.Pzxu = np.einsum("zxytu->zxu", full_marginal)
         self.Pytu = np.einsum("zxytu->ytu", full_marginal)
         # 2-way marginals
+        self.Pzu = np.einsum("zxu->zu", self.Pzxu)
+        self.Pxu = np.einsum("zxu->xu", self.Pzxu)
+        self.Pyu = np.einsum("ytu->yu", self.Pytu)
         self.Ptu = np.einsum("ytu->tu", self.Pytu)
         # univariate marginals
         self.Pu = np.einsum("tu->u", self.Ptu)
 
-        # PRE-COMPUTE CONDITIONALS
-        self.t2conditionals = dict()
-        for t in range(problem_dims.ntreatments):
-            conditional = self.Pzxyt[:, :, :, t] * (self.Pt[t] ** -1)
-            self.t2conditionals[t] = conditional
-
-        self._stored_expectations = None
-        self._stored_conditional_expectations = None
-        self._stored_conditional_second_moments = None
-        self._stored_conditional_third_moments = None
-        self._stored_third_moments = None
-        self._stored_conditional_higher_moments = defaultdict(lambda: None)
+        self.Pz_t = np.einsum("zt,t->zt", self.Pzt, self.Pt ** -1)
+        self.Px_t = np.einsum("xt,t->xt", self.Pxt, self.Pt ** -1)
+        self.Pzx_t = np.einsum("zxt,t->zxt", self.Pzxt, self.Pt ** -1)
+        self.Pzxy_t = np.einsum("zxyt,t->zxyt", self.Pzxyt, self.Pt ** -1)
 
     def moments_Y1(self, max_order: int):
         moments = [1]
@@ -90,106 +84,121 @@ class PopulationMomentsDiscrete(Moments):
         return moments
     
     @property
-    def E_X(self) -> np.ndarray:
-        if self._stored_expectations is None:
-            self._compute_expectations()
-        return self._stored_expectations
-
-    @property
     def E_Z(self) -> np.ndarray:
-        if self._stored_expectations is None:
-            self._compute_expectations()
-        return self._stored_expectations
+        """
+        Return [P(Z=1), P(Z=2), ..., P(Z=dz)]
+        """
+        return self.Pz
     
     @property
-    def E_X_T(self) -> Dict[int, np.ndarray]:
-        if self._stored_conditional_expectations is None:
-            self._compute_conditional_expectations()
-        return self._stored_conditional_expectations
+    def E_X(self) -> np.ndarray:
+        """
+        Return [P(X=1), P(X=2), ..., P(X=dx)]
+        """
+        return self.Px
+    
+    @property
+    def E_tY(self) -> np.ndarray:
+        """
+        Return [P(Y=1, T=1), P(Y=1, T=2), ...]
+        """
+        return self.Pyt[1, :]
     
     @property
     def E_Z_T(self) -> Dict[int, np.ndarray]:
-        if self._stored_conditional_expectations is None:
-            self._compute_conditional_expectations()
-        return self._stored_conditional_expectations
+        """
+        Return 
+        {t: 
+            [P(Z=1 | Z=t), P(Z=2 | T=t), ..., P(Z=dz | T=t)]
+        }
+        """
+        return {t: self.Pz_t[:, t] for t in range(self.ntreatments)}
+    
+    @property
+    def E_X_T(self) -> Dict[int, np.ndarray]:
+        """
+        Return 
+        {t: 
+            [P(X=1 | T=t), P(X=2 | T=t), ..., P(X=dx | T=t)]
+        }
+        """
+        return {t: self.Px_t[:, t] for t in range(self.ntreatments)}
+    
+    @property
+    def M_ZX(self) -> np.ndarray:
+        """
+        Return 
+        [[P(Z=1, X=1), P(Z=1, X=2), ..., P(Z=1, X=dx)],
+            [P(Z=2, X=1), P(Z=2, X=2), ..., P(Z=2, X=dx)],
+            ...
+            [P(Z=dz, X=1), P(Z=dz, X=2), ..., P(Z=dz, X=dx)]]
+        """
+        return self.Pzx
+    
+    @property
+    def M_ZtY(self) -> np.ndarray:
+        """
+        Return 
+        [[P(Z=1, Y=1, T=1), P(Z=1, Y=1, T=2), ..., P(Z=1, Y=1, T=dt)],
+         [P(Z=2, Y=1, T=2), P(Z=2, Y=1, T=2), ..., P(Z=2, Y=1, T=dt)],
+         ...
+         [P(Z=dz, Y=1, T=2), P(Z=dz, Y=1, T=2), ..., P(Z=dz, Y=1, T=dt)],]
+        """
+        return self.Pzyt[:, 1, :]
+    
+    @property
+    def M_XtY(self) -> np.ndarray:
+        """
+        Return 
+        [[P(X=1, Y=1, T=1), P(X=1, Y=1, T=2), ..., P(X=1, Y=1, T=dt)],
+         [P(X=2, Y=1, T=2), P(X=2, Y=1, T=2), ..., P(X=2, Y=1, T=dt)],
+         ...
+         [P(X=dx, Y=1, T=2), P(X=dx, Y=1, T=2), ..., P(X=dx, Y=1, T=dt)],]
+        """
+        return self.Pxyt[:, 1, :]
     
     @property
     def M_ZX_T(self) -> Dict[int, np.ndarray]:
-        if self._stored_conditional_second_moments is None:
-            self._compute_conditional_second_moments()
-        return self._stored_conditional_second_moments
+        """
+        Return 
+        {t: 
+            [[P(Z=1, X=1 | T=t), P(Z=1, X=2 | T=t), ..., P(Z=1, X=dx | T=t)],
+             [P(Z=2, X=1 | T=t), P(Z=2, X=2 | T=t), ..., P(Z=2, X=dx | T=t)],
+             ...
+             [P(Z=dz, X=1 | T=t), P(Z=dz, X=2 | T=t), ..., P(Z=dz, X=dx | T=t)]]
+        }
+        """
+        return {t: self.Pzx_t[:, :, t] for t in range(self.ntreatments)}
     
     @property
     def M_ZXY_T(self) -> Dict[int, np.ndarray]:
-        if self._stored_conditional_third_moments is None:
-            self._compute_conditional_third_moments()
-        return self._stored_conditional_third_moments
+        """
+        Return 
+        {t: 
+            [[P(Z=1, X=1, Y=1 | T=t), P(Z=1, X=2, Y=1 | T=t), ..., P(Z=1, X=dx, Y=1 | T=t)],
+             [P(Z=2, X=1, Y=1 | T=t), P(Z=2, X=2, Y=1 | T=t), ..., P(Z=2, X=dx, Y=1 | T=t)],
+             ...
+             [P(Z=dz, X=1, Y=1 | T=t), P(Z=dz, X=2, Y=1 | T=t), ..., P(Z=dz, X=dx, Y=1 | T=t)]]
+        }
+        """
+        return {t: self.Pzxy_t[:, :, 1, t] for t in range(self.ntreatments)}
     
+    @property
     def M_ZXtY(self) -> np.ndarray:
-        if self._stored_third_moments is None:
-            self._compute_third_moments()
-        return self._stored_third_moments
+        """
+        Return
+        [
+            [[P(Z=1, X=1, Y=1, T=1), P(Z=1, X=2, Y=1, T=1), ..., P(Z=1, X=dx, Y=1, T=1)],
+             [P(Z=2, X=1, Y=1, T=1), P(Z=2, X=2, Y=1, T=1), ..., P(Z=2, X=dx, Y=1, T=1)],
+             ...
+             [P(Z=dz, X=1, Y=1, T=1), P(Z=dz, X=2, Y=1, T=1), ..., P(Z=dz, X=dx, Y=1, T=1)]],
+            [[P(Z=1, X=1, Y=1, T=2), P(Z=1, X=2, Y=1, T=2), ..., P(Z=1, X=dx, Y=1, T=2)],
+             [P(Z=2, X=1, Y=1, T=2), P(Z=2, X=2, Y=1, T=2), ..., P(Z=2, X=dx, Y=1, T=2)],
+             ...
+             [P(Z=dz, X=1, Y=1, T=2), P(Z=dz, X=2, Y=1, T=2), ..., P(Z=dz, X=dx, Y=1, T=2)]],
+            ...
+        ]
+        Size: dz * dx * dt
+        """
+        return self.Pzxyt[:, :, 1, :]
     
-    def _compute_expectations(self):
-        self._stored_expectations = np.concatenate((self.Pz, self.Px))
-
-    def _compute_third_moments(self):
-        self._stored_expectations = np.concatenate((self.Pz, self.Px))
-        result = np.zeros([self.dz, self.dx, 2])
-        # (zx(yt)->|z| |x| |yt|)
-        result = self.Pzxyt[:, :, 1, :]
-        self._stored_third_moments = result
-    
-    def _compute_conditional_expectations(self):
-        self._stored_conditional_expectations = dict()
-
-        for t in range(self.ntreatments):
-            Pz_t = self.Pzt[:, t] * (self.Pt[t] ** -1)
-            Px_t = self.Pxt[:, t] * (self.Pt[t] ** -1)
-            result = np.concatenate((Pz_t, Px_t))
-            self._stored_conditional_expectations[t] = result
-    
-    def _compute_conditional_second_moments(self):
-        self._stored_conditional_second_moments = dict()
-        dz, dx = self.dz, self.dx
-
-        for t in range(self.ntreatments):
-            result = np.zeros([self.dz + self.dx + 1, self.dz + self.dx + 1])
-
-            Pz_t = self.Pzt[:, t] * (self.Pt[t] ** -1)
-            Px_t = self.Pxt[:, t] * (self.Pt[t] ** -1)
-            result[:dz, :dz] = np.diag(Pz_t)
-            result[dz:(dz + dz), dz:(dz + dx)] = np.diag(Px_t)
-
-            Pzx_t = self.Pzxt[:, :, t] * (self.Pt[t] ** -1)
-            result[:dz, dz:(dz + dx)] = Pzx_t
-            result[dz:(dz + dx), :dz] = Pzx_t.T
-
-            Mzy_t = self.Pzyt[:, 1, t] * (self.Pt[t] ** -1)
-            result[:dz, -1] = Mzy_t
-            result[-1, :dz] = Mzy_t.T
-
-            Mxy_t = self.Pxyt[:, 1, t] * (self.Pt[t] ** -1)
-            result[dz:(dz+dx), -1] = Mxy_t
-            result[-1, dz:(dz + dx)] = Mxy_t.T
-            
-            result[-1, -1] = self.Pyt[1, t] * (self.Pt[t] ** -1)
-            self._stored_conditional_second_moments[t] = result
-
-    def _compute_conditional_third_moments(self):
-        self._stored_conditional_third_moments = dict()
-        dz, dx = self.dz, self.dx
-
-        for t in range(self.ntreatments):
-            result = np.zeros([self.dz + self.dx, self.dz + self.dx])
-
-            Mzy_t = self.Pzyt[:, 1, t] * (self.Pt[t] ** -1)
-            Mxy_t = self.Pxyt[:, 1, t] * (self.Pt[t] ** -1)
-            result[:dz, :dz] = np.diag(Mzy_t)
-            result[dz:(dz + dz), dz:(dz + dx)] = np.diag(Mxy_t)
-
-            Mzxy_t = self.Pzxyt[:, :, 1, t] * (self.Pt[t] ** -1)
-            result[:dz, dz:(dz + dx)] = Mzxy_t
-            result[dz:(dz + dx), :dz] = Mzxy_t.T
-
-
