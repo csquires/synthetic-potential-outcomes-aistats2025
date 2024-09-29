@@ -5,7 +5,7 @@ import numpy as np
 from src.problem_dims import ProblemDimensions
 from src.data_generation.binary_generator import BinaryGenerator
 
-from src.moments.population_moments_binary import PopulationMomentsBinary
+from src.moments.population_moments_discrete import PopulationMomentsDiscrete
 from src.moments.empirical_moments import EmpiricalMoments
 from src.methods.tensor_decomposition import TensorDecomposition
 
@@ -23,7 +23,8 @@ problem_dims = ProblemDimensions(nz, nx, ngroups, ntreatments)
 # ==== DEFINE DATA GENERATOR ====
 generator = BinaryGenerator(problem_dims, matching_coef=0.25, treatment_coef=0.25)
 marginal = generator.true_marginal()
-oracle_moments = PopulationMomentsBinary(problem_dims, marginal)
+marginal = marginal.reshape(2**nz, 2**nx, 2, ntreatments, ngroups)
+oracle_moments = PopulationMomentsDiscrete(problem_dims, marginal)
 oracle_third_moments = oracle_moments.third_moments
 oracle_expectations = oracle_moments.expectations
 EZ = oracle_expectations[problem_dims.z_ixs]

@@ -1,7 +1,6 @@
 # === IMPORTS: BUILT-IN ===
 from collections import defaultdict
 from typing import Dict
-import itertools as itr
 
 # === IMPORTS: THIRD-PARTY ===
 import numpy as np
@@ -14,9 +13,10 @@ from src.moments.moments import Moments
 
 class PopulationMomentsDiscrete(Moments):
     def __init__(self, problem_dims: ProblemDimensions, full_marginal: np.ndarray):
-        self.problem_dims = problem_dims
-        self.dz = self.problem_dims.nz
-        self.dx = self.problem_dims.nx
+        self.dz = problem_dims.nz
+        self.dx = problem_dims.nx
+        self.ntreatments = problem_dims.ntreatments
+        self.ngroups = problem_dims.ngroups
 
         self.full_marginal = full_marginal  # (z, x, y, t, u)
         self.Pzxyt = np.einsum("zxytu->zxyt", full_marginal)
@@ -39,7 +39,7 @@ class PopulationMomentsDiscrete(Moments):
         self.Pz = np.einsum("zx->z", self.Pzx)
         self.Px = np.einsum("zx->x", self.Pzx)
         self.Py = np.einsum("zy->y", self.Pzy)
-        self.Pt = np.einsum("tu->t", self.Ptu)
+        self.Pt = np.einsum("yt->t", self.Pyt)
         
         # === UNOBSERVED ===
         # 3-way marginals
@@ -119,12 +119,17 @@ class PopulationMomentsDiscrete(Moments):
         return self._stored_third_moments
     
     def _compute_expectations(self):
-        self.stored_expectations = np.concatenate((self.Pz, self.Px))
+        self._stored_expectations = np.concatenate((self.Pz, self.Px))
+
+    def _compute_third_moments(self):
+        self._stored_expectations = np.concatenate((self.Pz, self.Px))
+        result = np.zeros([self.dz, self.dx, 2])
+        self._stored_third_moments = result
     
     def _compute_conditional_expectations(self):
         self._stored_conditional_expectations = dict()
 
-        for t in range(self.problem_dims.ntreatments):
+        for t in range(self.ntreatments):
             Pz_t = self.Pzt[:, t] * (self.Pt[t] ** -1)
             Px_t = self.Pxt[:, t] * (self.Pt[t] ** -1)
             result = np.concatenate((Pz_t, Px_t))
@@ -134,8 +139,8 @@ class PopulationMomentsDiscrete(Moments):
         self._stored_conditional_second_moments = dict()
         dz, dx = self.dz, self.dx
 
-        for t in range(self.problem_dims.ntreatments):
-            result = np.zeros([self.dz + self.dx + 1])
+        for t in range(self.ntreatments):
+            result = np.zeros([self.dz + self.dx + 1, self.dz + self.dx + 1])
 
             Pz_t = self.Pzt[:, t] * (self.Pt[t] ** -1)
             Px_t = self.Pxt[:, t] * (self.Pt[t] ** -1)
@@ -161,8 +166,8 @@ class PopulationMomentsDiscrete(Moments):
         self._stored_conditional_third_moments = dict()
         dz, dx = self.dz, self.dx
 
-        for t in range(self.problem_dims.ntreatments):
-            result = np.zeros([self.dz + self.dx])
+        for t in range(self.ntreatments):
+            result = np.zeros([self.dz + self.dx, self.dz + self.dx])
 
             Mzy_t = self.Pzyt[:, 1, t] * (self.Pt[t] ** -1)
             Mxy_t = self.Pxyt[:, 1, t] * (self.Pt[t] ** -1)
