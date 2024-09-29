@@ -45,21 +45,53 @@ def compute_R_moments(
 
 
 class PopulationMomentsBinary(Moments):
-    def __init__(self, config: ProblemDimensions, full_marginal: np.ndarray):
-        self.config = config
-        self.full_marginal = full_marginal
-        self.obs_marginal = full_marginal.sum(axis=config.u_ix)
+    def __init__(self, problem_dims: ProblemDimensions, full_marginal: np.ndarray):
+        self.problem_dims = problem_dims
+        dz, dx = problem_dims.nz, problem_dims.nx
+        ntreatments, ngroups = problem_dims.ntreatments, problem_dims.ngroups
+        self.full_marginal = full_marginal.reshape((dz, dx, 2, ntreatments, ngroups))
+        self.Pzxyt = np.einsum("zxytu->zxyt", full_marginal)
+        
+        # === OBSERVED ===
+        # 3-way marginals
+        self.Pzxy = np.einsum("zxyt->zxy", self.Pzxyt)
+        self.Pzxt = np.einsum("zxyt->zxt", self.Pzxyt)
+        self.Pzyt = np.einsum("zxyt->zyt", self.Pzxyt)
+        self.Pxyt = np.einsum("zxyt->xyt", self.Pzxyt)
 
-        nvariables = len(self.obs_marginal.shape)
-        self.p_ytu = self.full_marginal.sum(complement(nvariables, {config.y_ix, config.t_ix, config.u_ix}))
-        self.p_tu = self.p_ytu.sum(axis=0)
-        self.p_u = self.p_tu.sum(axis=0)
+        # 2-way marginals
+        self.Pzx = np.einsum("zxy->zx", self.Pzxy)
+        self.Pzy = np.einsum("zxy->zy", self.Pzxy)
+        self.Pzt = np.einsum("zxt->zt", self.Pzxt)
+        self.Pxt = np.einsum("zxt->xt", self.Pzxt)
+        self.Pyt = np.einsum("xyt->yt", self.Pxyt)
+
+        # univariate marginals
+        self.Pz = np.einsum("zx->z", self.Pzx)
+        self.Px = np.einsum("zx->x", self.Pzx)
+        self.Py = np.einsum("zy->y", self.Pzy)
+        self.Pt = np.einsum("tu->t", self.Ptu)
+        
+        # === UNOBSERVED ===
+        # 3-way marginals
+        self.Pytu = np.einsum("zxytu->ytu", full_marginal)
+        # 2-way marginals
+        self.Ptu = np.einsum("ytu->tu", self.Pytu)
+        # univariate marginals
+        self.Pu = np.einsum("tu->u", self.Ptu)
+
+        # self.Pzxyt = full_marginal.sum(axis=config.u_ix)
+
+        nvariables = len(self.Pzxyt.shape)
+        # self.p_ytu = self.full_marginal.sum(complement(nvariables, {config.y_ix, config.t_ix, config.u_ix}))
+        # self.p_tu = self.p_ytu.sum(axis=0)
+        # self.p_u = self.p_tu.sum(axis=0)
 
         # PRE-COMPUTE CONDITIONALS
-        treatment_marginal = self.obs_marginal.sum(complement(nvariables, {config.t_ix}))
+        treatment_marginal = self.Pzxyt.sum(complement(nvariables, {problem_dims.t_ix}))
         self.t2conditionals = dict()
-        for t in range(config.ntreatments):
-            conditional = np.take(self.obs_marginal, t, axis=config.t_ix) / treatment_marginal[t]
+        for t in range(problem_dims.ntreatments):
+            conditional = np.take(self.Pzxyt, t, axis=problem_dims.t_ix) / treatment_marginal[t]
             self.t2conditionals[t] = conditional
 
         self._stored_expectations = None
@@ -72,35 +104,35 @@ class PopulationMomentsBinary(Moments):
     def moments_Y1(self, max_order: int):
         moments = [1]
         for order in range(1, max_order+1):
-            mean_y1_given_u = np.einsum("u,u->u", self.p_ytu[1, 1, :], self.p_tu[1, :]**-1)
+            mean_y1_given_u = np.einsum("u,u->u", self.Pytu[1, 1, :], self.Ptu[1, :]**-1)
             moments_y1_given_u = mean_y1_given_u ** order
-            moment = np.einsum("u,u", self.p_u, moments_y1_given_u)
+            moment = np.einsum("u,u", self.Pu, moments_y1_given_u)
             moments.append(moment)
         return moments
 
     def moments_Y0(self, max_order: int):
         moments = [1]
         for order in range(1, max_order+1):
-            mean_y0_given_u = np.einsum("u,u->u", self.p_ytu[1, 0, :], self.p_tu[0, :]**-1)
+            mean_y0_given_u = np.einsum("u,u->u", self.Pytu[1, 0, :], self.Ptu[0, :]**-1)
             moments_y0_given_u = mean_y0_given_u ** order
-            moment = np.einsum("u,u", self.p_u, moments_y0_given_u)
+            moment = np.einsum("u,u", self.Pu, moments_y0_given_u)
             moments.append(moment)
         return moments
     
     def moments_R(self, max_order: int):
         moments = [1]
         for order in range(1, max_order+1):
-            mean_r_given_u = np.einsum("u,u->u", self.p_ytu[1, 1, :] - self.p_ytu[1, 0, :], self.p_tu[1, :]**-1)
+            mean_r_given_u = np.einsum("u,u->u", self.Pytu[1, 1, :] - self.Pytu[1, 0, :], self.Ptu[1, :]**-1)
             moments_r_given_u = mean_r_given_u ** order
-            moment = np.einsum("u,u", self.p_u, moments_r_given_u)
+            moment = np.einsum("u,u", self.Pu, moments_r_given_u)
             moments.append(moment)
         return moments
     
     def prob_y0_given_U(self):
-        return self.p_ytu[1, 1] / self.p_tu[1]
+        return self.Pytu[1, 1] / self.Ptu[1]
     
     def prob_y1_given_U(self):
-        return self.p_ytu[1, 0] / self.p_tu[0]
+        return self.Pytu[1, 0] / self.Ptu[0]
 
     @property
     def expectations(self) -> np.ndarray:
@@ -138,36 +170,36 @@ class PopulationMomentsBinary(Moments):
         return self._stored_conditional_higher_moments[order]
     
     def _compute_expectations(self):
-        nvariables = len(self.obs_marginal.shape)
+        nvariables = len(self.Pzxyt.shape)
         self._stored_expectations = np.zeros(nvariables)
         for i in range(nvariables):
-            p_i = np.sum(self.obs_marginal, axis=complement(nvariables, {i}))
+            p_i = np.sum(self.Pzxyt, axis=complement(nvariables, {i}))
             self._stored_expectations[i] = p_i[1]
     
     def _compute_conditional_expectations(self):
         self._stored_conditional_expectations = dict()
 
-        for t, conditional in self.t2conditionals.items():
-            nvariables = len(conditional.shape)
+        for t, Pxzyu_t in self.t2conditionals.items():
+            nvariables = len(Pxzyu_t.shape)
             result = np.zeros((nvariables))
             for i in range(nvariables):
-                p_i = np.sum(conditional, axis=complement(nvariables, {i}))
+                p_i = np.sum(Pxzyu_t, axis=complement(nvariables, {i}))
                 result[i] = p_i[1]
             
             self._stored_conditional_expectations[t] = result
     
     def _compute_conditional_second_moments(self):
         self._stored_conditional_second_moments = dict()
-        for t, conditional in self.t2conditionals.items():
-            nvariables = len(conditional.shape)
+        for t, Pxzyu_t in self.t2conditionals.items():
+            nvariables = len(Pxzyu_t.shape)
             result = np.zeros((nvariables, nvariables))
 
             for i in range(nvariables):
-                p_i = np.sum(conditional, axis=complement(nvariables, {i}))
+                p_i = np.sum(Pxzyu_t, axis=complement(nvariables, {i}))
                 result[i, i] = p_i[1]
 
             for i, j in itr.combinations(range(nvariables), 2):
-                p_ij = np.sum(conditional, axis=complement(nvariables, {i, j}))
+                p_ij = np.sum(Pxzyu_t, axis=complement(nvariables, {i, j}))
                 result[i, j] = p_ij[1, 1]
                 result[j, i] = p_ij[1, 1]
             
@@ -175,28 +207,28 @@ class PopulationMomentsBinary(Moments):
 
     def _compute_conditional_third_moments(self):
         self._stored_conditional_third_moments = dict()
-        y_ix = self.config.y_ix
+        y_ix = self.problem_dims.y_ix
 
-        for t, conditional in self.t2conditionals.items():
-            nvariables = len(conditional.shape)
+        for t, Pxzyu_t in self.t2conditionals.items():
+            nvariables = len(Pxzyu_t.shape)
             result = np.zeros((nvariables-1, nvariables-1))
 
             for i in range(nvariables-1):
-                p_i = np.sum(conditional, axis=complement(nvariables, {i, y_ix}))
+                p_i = np.sum(Pxzyu_t, axis=complement(nvariables, {i, y_ix}))
                 result[i, i] = p_i[1, 1]
 
             for i, j in itr.combinations(range(nvariables-1), 2):
-                p_ij = np.sum(conditional, axis=complement(nvariables, {i, j, y_ix}))
+                p_ij = np.sum(Pxzyu_t, axis=complement(nvariables, {i, j, y_ix}))
                 result[i, j] = p_ij[1, 1, 1]
                 result[j, i] = p_ij[1, 1, 1]
             
             self._stored_conditional_third_moments[t] = result
 
     def _compute_third_moments(self):
-        marginal = self.obs_marginal
+        marginal = self.Pzxyt
         marginal_y1 = marginal[..., 1, :]
-        num_zvals = 2 ** self.config.nz
-        num_xvals = 2 ** self.config.nx
+        num_zvals = 2 ** self.problem_dims.nz
+        num_xvals = 2 ** self.problem_dims.nx
         result = marginal_y1.reshape((num_zvals, num_xvals, 2))
         
         self._stored_third_moments = result
@@ -204,13 +236,13 @@ class PopulationMomentsBinary(Moments):
     def _compute_conditional_higher_moments(self, order):
         self._stored_conditional_higher_moments[order] = dict()
 
-        for t, conditional in self.t2conditionals.items():
-            nvariables = len(conditional.shape)
+        for t, Pxzyu_t in self.t2conditionals.items():
+            nvariables = len(Pxzyu_t.shape)
             result = np.zeros((nvariables,) * order)
 
             # TODO: LOTS OF REPETITION WITH THIS APPROACH, CAN WE USE A DIFFERENT ONE?
             for indices in itr.combinations_with_replacement(range(nvariables), order):
-                marginal = np.sum(conditional, axis=complement(nvariables, set(indices)))
+                marginal = np.sum(Pxzyu_t, axis=complement(nvariables, set(indices)))
                 val = marginal[(1,) * len(marginal.shape)]
                 for perm_indices in itr.permutations(indices):
                     print(perm_indices)
