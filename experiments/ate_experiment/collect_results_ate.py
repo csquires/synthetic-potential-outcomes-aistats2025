@@ -7,7 +7,7 @@ from tqdm import trange
 
 # === IMPORTS: LOCAL ===
 from src.problem_dims import ProblemDimensions
-from src.data_generation.discrete_generator import DiscreteFixedGenerator
+from src.data_generation.binary_generator import DiscreteFixedGenerator
 
 from src.moments.population_moments_binary import PopulationMomentsBinary
 from src.moments.empirical_moments import EmpiricalMoments

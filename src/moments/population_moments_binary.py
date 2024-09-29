@@ -66,6 +66,7 @@ class PopulationMomentsBinary(Moments):
         self._stored_conditional_expectations = None
         self._stored_conditional_second_moments = None
         self._stored_conditional_third_moments = None
+        self._stored_third_moments = None
         self._stored_conditional_higher_moments = defaultdict(lambda: None)
 
     def moments_Y1(self, max_order: int):
@@ -124,6 +125,12 @@ class PopulationMomentsBinary(Moments):
         if self._stored_conditional_third_moments is None:
             self._compute_conditional_third_moments()
         return self._stored_conditional_third_moments
+    
+    @property
+    def third_moments(self) -> np.ndarray:
+        if self._stored_third_moments is None:
+            self._compute_third_moments()
+        return self._stored_third_moments
     
     def conditional_higher_moments(self, order) -> Dict[int, np.ndarray]:
         if self._stored_conditional_higher_moments[order] is None:
@@ -184,6 +191,15 @@ class PopulationMomentsBinary(Moments):
                 result[j, i] = p_ij[1, 1, 1]
             
             self._stored_conditional_third_moments[t] = result
+
+    def _compute_third_moments(self):
+        marginal = self.obs_marginal
+        marginal_y1 = marginal[..., 1, :]
+        num_zvals = 2 ** self.config.nz
+        num_xvals = 2 ** self.config.nx
+        result = marginal_y1.reshape((num_zvals, num_xvals, 2))
+        
+        self._stored_third_moments = result
 
     def _compute_conditional_higher_moments(self, order):
         self._stored_conditional_higher_moments[order] = dict()

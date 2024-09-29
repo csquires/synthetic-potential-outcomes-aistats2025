@@ -11,14 +11,14 @@ class ProblemDimensions:
 
     def __post_init__(self):
         # Z: proxies that can cause T
-        self.z_ixs = list(range(self.nx))
+        self.z_ixs = list(range(self.nz))
         # X: proxies that are independent
         self.x_ixs = list(range(self.nz, self.nz + self.nx))
         # Y: outcome
         self.y_ix = self.nz + self.nx
         # T: treatment
-        self.t_ix = self.nx + self.nx + 1
+        self.t_ix = self.nz + self.nx + 1
         # U: unobserved confounder
-        self.u_ix = self.nx + self.nx + 2
+        self.u_ix = self.nz + self.nx + 2
 
         self.zxy_ixs = self.z_ixs + self.x_ixs + [self.y_ix]

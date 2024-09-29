@@ -5,46 +5,32 @@ import numpy as np
 from src.problem_dims import ProblemDimensions
 
 
-def sample(uvals, conditional_u0, conditional_u1):
-    u0_csum = np.cumsum(conditional_u0)
-    u1_csum = np.cumsum(conditional_u1)
-    eps = np.random.uniform(len(uvals))
-    u0_sample = np.argmax(eps < u0_csum)
-    u1_sample = np.argmax(eps < u0_csum)
-    breakpoint()
-
-
-class DiscreteGenerator:
+class BinaryGenerator:
     def __init__(
             self, 
             problem_dims: ProblemDimensions, 
             matching_coef: float = 0.25,
             treatment_coef: float = 0.25,
-            subgroup_coef: float = 0
+            subgroup_coef: float = 0,
+            proxy_biases: np.ndarray = None,
+            proxy_shift: float = 0.3
         ):
         self.problem_dims = problem_dims
         self.matching_coef = matching_coef
         self.treatment_coef = treatment_coef
         self.subgroup_coef = subgroup_coef
 
-        nz, nx = problem_dims.nz, problem_dims.nx
-        self.Pz_u0 = np.arange(1, nz+1)
-        self.Pz_u1 = np.arange(nz+1, 1, -1)
-        self.Pz_u0 = self.Pz_u0 / sum(self.Pz_u0)
-        self.Pz_u1 = self.Pz_u1 / sum(self.Pz_u1)
-
-        self.Px_u0 = np.arange(nx+2, 2, -1)
-        self.Px_u1 = np.arange(2, nx+2)
-        self.Px_u0 = self.Px_u0 / sum(self.Px_u0)
-        self.Px_u1 = self.Px_u1 / sum(self.Px_u1)
+        if proxy_biases is None:
+            proxy_biases = np.linspace(0.2, 0.6, problem_dims.nz + problem_dims.nx)
+        self.proxy_biases = proxy_biases
+        self.proxy_shift = proxy_shift
 
     def generate(self, nsamples: int):
-        z_ix = 0
-        x_ix = 1
-        y_ix = 2
-        t_ix = 3
-        u_ix = 4
-        full_samples = np.ndarray((nsamples, 5))
+        nproxies = self.problem_dims.nz + self.problem_dims.nx
+        y_ix = self.problem_dims.y_ix
+        t_ix = self.problem_dims.t_ix
+        u_ix = self.problem_dims.u_ix
+        full_samples = np.ndarray((nsamples, nproxies + 3))
 
         u_vals = np.random.binomial(n=1, p=0.5, size=nsamples)
         # P(T=1|U=0) = 3/4, P(T=1|U=1) = 1/4
@@ -56,8 +42,12 @@ class DiscreteGenerator:
         full_samples[:, t_ix] = t_vals
         full_samples[:, y_ix] = y_vals
 
-        full_samples[:, z_ix] = None
-        full_samples[:, x_ix] = None
+        for i in range(nproxies):
+            if i % 2 == 0:
+                ps = self.proxy_biases[i] + self.proxy_shift * u_vals
+            else:
+                ps = self.proxy_biases[i] + self.proxy_shift * (1 - u_vals)
+            full_samples[:, i] = np.random.uniform(size=nsamples) < ps
 
         obs_samples = full_samples[:, :-1]
         return full_samples, obs_samples
@@ -80,7 +70,16 @@ class DiscreteGenerator:
         return P
     
     def proxy_conditional(self, i):
-        pass
+        proxy_bias = self.proxy_biases[i]
+        proxy_shift = self.proxy_shift
+        P = np.zeros((2, 2))
+        if i % 2 == 0:
+            P[:, 0] = np.array([1 - proxy_bias, proxy_bias])  # given U=0
+            P[:, 1] = np.array([1 - proxy_bias - proxy_shift, proxy_bias + proxy_shift])  # given U=1
+        else:
+            P[:, 0] = np.array([1 - proxy_bias - proxy_shift, proxy_bias + proxy_shift])  # given U=0
+            P[:, 1] = np.array([1 - proxy_bias, proxy_bias])  # given U=1
+        return P
     
     def true_marginal(self):
         p_u = np.array([0.5, 0.5])  # u
@@ -98,7 +97,7 @@ class DiscreteGenerator:
 if __name__ == "__main__":
     nproxies = 4
     config = ProblemDimensions(nproxies=nproxies, ngroups=2, ntreatments=2)
-    generator = DiscreteGenerator(config)
+    generator = DiscreteFixedGenerator(config)
     full_samples, obs_samples = generator.generate(1000)
     u0_samples = full_samples[full_samples[:, config.u_ix] == 0]
     u1_samples = full_samples[full_samples[:, config.u_ix] == 1]

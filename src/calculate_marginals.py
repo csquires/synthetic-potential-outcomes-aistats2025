@@ -5,6 +5,23 @@ import numpy as np
 from src.problem_dims import ProblemDimensions
 
 
+def complement(nvariables: int, subset: int):
+    return tuple(set(range(nvariables)) - subset)
+
+
+class Marginal:
+    def __init__(self, full_marginal):
+        self.full_marginal = full_marginal
+        self.nvariables = len(self.full_marginal.shape)
+
+    def complement(self, ixs):
+        return tuple([ix for ix in range(self.nvariables) if ix not in ixs])
+
+    def get_marginal(self, ixs):
+        P = np.sum(self.full_marginal, axis=self.complement(ixs))
+        return P
+
+
 
 class MarginalsCalculator:
     def __init__(self, config: ProblemDimensions, full_samples: np.ndarray):

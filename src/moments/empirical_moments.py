@@ -69,7 +69,10 @@ class EmpiricalMoments(Moments):
     def third_moments(self):
         if self._stored_third_moments is None:
             samples = self.obs_samples
-            self._stored_third_moments = np.einsum("ij,ik,im->jkm", samples, samples, samples) / samples.shape[0]
+            t_onehot = (samples[:, self.problem_dims.t_ix] == np.array([[0], [1]])).T
+            y_samples = samples[:, self.problem_dims.y_ix]
+            y_tilde_samples = t_onehot * y_samples[:, None]
+            self._stored_third_moments = np.einsum("ij,ik,im->jkm", samples, samples, y_tilde_samples) / samples.shape[0]
 
         return self._stored_third_moments
     

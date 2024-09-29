@@ -7,7 +7,7 @@ import numpy as np
 from tensorly.decomposition import parafac
 
 # === IMPORTS: LOCAL ===
-from moments.empirical_moments import EmpiricalMoments
+from src.moments.empirical_moments import EmpiricalMoments
 from src.problem_dims import ProblemDimensions
 
 
