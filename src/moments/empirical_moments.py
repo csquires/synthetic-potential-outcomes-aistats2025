@@ -1,7 +1,3 @@
-# === IMPORTS: BUILT-IN ===
-from collections import defaultdict
-from typing import Dict
-
 # === IMPORTS: THIRD-PARTY ===
 import numpy as np
 
@@ -10,84 +6,58 @@ from src.problem_dims import ProblemDimensions
 from src.moments.moments import Moments
 
 
-class EmpiricalMoments(Moments):
-    def __init__(self, problem_dims: ProblemDimensions, obs_samples: np.ndarray):
-        self.problem_dims = problem_dims
-        self.obs_samples = obs_samples
+def get_empirical_moments(
+    problem_dims: ProblemDimensions,
+    obs_samples: np.ndarray
+):
+    # === UNCONDITIONAL ===
+    Zsamples = obs_samples[:, problem_dims.z_ixs]
+    Xsamples = obs_samples[:, problem_dims.x_ixs]
+    Ysamples = obs_samples[:, problem_dims.y_ix]
+    Tsamples = (obs_samples[:, problem_dims.t_ix] == np.array([[0], [1]])).T
+    tYsamples = np.einsum("i,it->it", Ysamples, Tsamples)
+    nsamples = obs_samples.shape[0]
 
-        # split samples by treatment
-        self.t2samples: Dict[int, np.ndarray] = dict()
-        for t in range(problem_dims.ntreatments):
-            self.t2samples[t] = obs_samples[obs_samples[:, problem_dims.t_ix] == t][:, problem_dims.zxy_ixs]
+    # first moments
+    E_Z = Zsamples.mean(axis=0)
+    E_X = Xsamples.mean(axis=0)
+    E_tY = None
+    # second moments
+    M_ZX = np.einsum("iz,ix->zx", Zsamples, Xsamples) / nsamples
+    M_ZtY = np.einsum("iz,it->zt", Zsamples, tYsamples) / nsamples
+    M_XtY = np.einsum("iz,it->xt", Xsamples, tYsamples) / nsamples
+    # third moments
+    M_ZXtY = np.einsum("iz,ix,it->zxt", Zsamples, Xsamples, tYsamples) / nsamples
 
-        # split samples by treatment
-        self._stored_expectations = None
-        self._stored_conditional_expectations = None
-        self._stored_conditional_second_moments = None
-        self._stored_conditional_third_moments = None
-        self._stored_third_moments = None
+    # === CONDITIONAL ===
+    E_Z_T = dict()
+    E_X_T = dict()
+    M_ZX_T = dict()
+    M_ZXY_T = dict()
+    for t in range(problem_dims.ntreatments):
+        t_ixs = obs_samples[:, problem_dims.t_ix] == 1
+        nsamples_t = sum(t_ixs)
+        E_Z_T[t] = Zsamples[t_ixs]
+        E_X_T[t] = Xsamples[t_ixs]
+        M_ZX_T[t] = np.einsum("iz,ix->zx", Zsamples[t_ixs], Xsamples[t_ixs]) / nsamples_t
+        M_ZXY_T[t] = np.einsum("iz,ix,i->zx", Zsamples[t_ixs], Xsamples[t_ixs], Ysamples[t_ixs]) / nsamples_t
 
-    @property
-    def E_X(self) -> np.ndarray:
-        if self._stored_expectations is None:
-            self._stored_expectations = np.mean(self.obs_samples, axis=0)
-
-        return self._stored_expectations
-    
-    @property
-    def E_Z(self) -> np.ndarray:
-        if self._stored_expectations is None:
-            self._stored_expectations = np.mean(self.obs_samples, axis=0)
-
-        return self._stored_expectations
-
-    @property
-    def E_X_T(self) -> Dict[int, np.ndarray]:
-        if self._stored_conditional_expectations is None:
-            self._stored_conditional_expectations = dict()
-            for t, samples_t in self.t2samples.items():
-                conditional_expectation = samples_t.mean(axis=0)
-                self._stored_conditional_expectations[t] = conditional_expectation
-
-        return self._stored_conditional_expectations
-    
-    @property
-    def E_Z_T(self) -> Dict[int, np.ndarray]:
-        if self._stored_conditional_expectations is None:
-            self._stored_conditional_expectations = dict()
-            for t, samples_t in self.t2samples.items():
-                conditional_expectation = samples_t.mean(axis=0)
-                self._stored_conditional_expectations[t] = conditional_expectation
-
-        return self._stored_conditional_expectations
-
-    @property
-    def M_ZX_T(self) -> Dict[int, np.ndarray]:
-        if self._stored_conditional_second_moments is None:
-            self._stored_conditional_second_moments = dict()
-            for t, samples_t in self.t2samples.items():
-                moment = np.einsum('ij,ik->jk', samples_t, samples_t) / samples_t.shape[0]
-                self._stored_conditional_second_moments[t] = moment
-
-        return self._stored_conditional_second_moments
-    
-    @property
-    def M_ZXY_T(self) -> Dict[int, np.ndarray]:
-        if self._stored_conditional_third_moments is None:
-            self._stored_conditional_third_moments = dict()
-            for t, samples_t in self.t2samples.items():
-                moment = np.einsum("ij,ik,i->jk", samples_t, samples_t, samples_t[:, self.problem_dims.y_ix]) / samples_t.shape[0]
-                self._stored_conditional_third_moments[t] = moment
-
-        return self._stored_conditional_third_moments
-    
-    @property
-    def M_ZXtY(self):
-        if self._stored_third_moments is None:
-            samples = self.obs_samples
-            t_onehot = (samples[:, self.problem_dims.t_ix] == np.array([[0], [1]])).T
-            y_samples = samples[:, self.problem_dims.y_ix]
-            y_tilde_samples = t_onehot * y_samples[:, None]
-            self._stored_third_moments = np.einsum("ij,ik,im->jkm", samples, samples, y_tilde_samples) / samples.shape[0]
-
-        return self._stored_third_moments
+    return Moments(
+        # first moments
+        E_Z, 
+        E_X, 
+        E_tY,
+        # second moments
+        M_ZX, 
+        M_ZtY, 
+        M_XtY,
+        # third moments
+        M_ZXtY,
+        # conditional first moments
+        E_Z_T, 
+        E_X_T,
+        # conditional second moments
+        M_ZX_T,
+        # conditional third moments
+        M_ZXY_T
+    )

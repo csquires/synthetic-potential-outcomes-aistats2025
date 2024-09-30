@@ -103,6 +103,7 @@ class SyntheticPotentialOutcomes:
         self,
         moments: Moments
     ):  
+        # TODO: change these
         expectations = moments.expectations
         conditional_second_moments = moments.conditional_second_moments
         conditional_third_moments = moments.conditional_third_moments

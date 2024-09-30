@@ -7,10 +7,9 @@ from tqdm import trange
 
 # === IMPORTS: LOCAL ===
 from src.problem_dims import ProblemDimensions
-from src.data_generation.binary_generator import DiscreteFixedGenerator
-
-from src.moments.population_moments_binary import PopulationMomentsBinary
-from src.moments.empirical_moments import EmpiricalMoments
+from src.data_generation.binary_generator import BinaryGenerator
+from src.moments.population_moments_discrete import get_population_moments
+from src.moments.empirical_moments import get_empirical_moments
 from src.methods.synthetic_potential_outcomes import SyntheticPotentialOutcomes
 
 
@@ -23,9 +22,9 @@ ntreatments = 2
 problem_dims = ProblemDimensions(nz, nx, ngroups, ntreatments)
 
 # ==== DEFINE DATA GENERATOR ====
-generator = DiscreteFixedGenerator(problem_dims, matching_coef=0.25, treatment_coef=0.25)
+generator = BinaryGenerator(problem_dims, matching_coef=0.25, treatment_coef=0.25)
 marginal = generator.true_marginal()
-oracle_moments = PopulationMomentsBinary(problem_dims, marginal)
+oracle_moments = get_population_moments(marginal)
 true_mean_y0 = oracle_moments.moments_Y0(1)[1]  # 0th moment is 1, 1st moment is mean
 true_mean_y1 = oracle_moments.moments_Y1(1)[1]  # 0th moment is 1, 1st moment is mean
 
@@ -37,7 +36,7 @@ y1_ests = np.zeros(nruns)
 for r in trange(nruns):
     # ==== GENERATE SAMPLES AND COMPUTE MOMENTS ====
     full_samples, obs_samples = generator.generate(nsamples=nsamples)
-    moments = EmpiricalMoments(problem_dims, obs_samples)
+    moments = get_empirical_moments(problem_dims, obs_samples)
     expectations = moments.expectations
     conditional_second_moments = moments.conditional_second_moments
 
