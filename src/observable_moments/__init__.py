@@ -7,7 +7,7 @@ import numpy as np
 
 
 @dataclass
-class Moments:
+class ObservableMoments:
     # first moments
     E_Z: np.ndarray
     E_X: np.ndarray
@@ -24,8 +24,10 @@ class Moments:
     E_X_T: Dict[int, np.ndarray]
     # conditional second moments
     M_ZX_T: Dict[int, np.ndarray]
+    M_ZY_T: Dict[int, np.ndarray]
     # conditional third moments
     M_ZXY_T: Dict[int, np.ndarray]
+
 
 
 # first moments

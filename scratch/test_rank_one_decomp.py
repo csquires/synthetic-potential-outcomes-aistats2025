@@ -5,7 +5,7 @@ from tensorly.decomposition import parafac, parafac_power_iteration
 # === IMPORTS: LOCAL ===
 from src.problem_dims import ProblemDimensions
 from src.data_generation.binary_generator import BinaryGenerator
-from src.moments.population_moments_discrete import get_population_moments
+from src.observable_moments.population_moments_discrete import compute_observable_moments_discrete
 
 
 np.random.seed(123)
@@ -22,7 +22,7 @@ marginal = generator.true_marginal()
 marginal = marginal.reshape(2**nz, 2**nx, 2, ntreatments, ngroups)
 
 
-oracle_moments = get_population_moments(marginal)
+oracle_moments = compute_observable_moments_discrete(marginal)
 M_ZXtY = oracle_moments.M_ZXtY
 E_Z = oracle_moments.E_Z
 E_X = oracle_moments.E_X

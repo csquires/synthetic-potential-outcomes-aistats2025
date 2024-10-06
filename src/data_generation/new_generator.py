@@ -9,14 +9,22 @@ class ContinuousFixedGenerator:
     def __init__(
             self, 
             problem_dims: ProblemDimensions,
+            xrange_u0: tuple[int] = (0, 1),
+            zrange_u0: tuple[int] = (0, 1),
+            xrange_u1: tuple[int] = (0.25, 1.25),
+            zrange_u1: tuple[int] = (0.25, 1.25),
         ):
         self.problem_dims = problem_dims
         self.matching_coef = 0.25
         self.treatment_coef = 0.25
         self.subgroup_coef = 0
 
+        self.xwidth_u0, self.xshift_u0 = xrange_u0[1] - xrange_u0[0], xrange_u0[0]
+        self.xwidth_u1, self.xshift_u1 = xrange_u1[1] - xrange_u1[0], xrange_u1[0]
+        self.zwidth_u0, self.zshift_u0 = zrange_u0[1] - zrange_u0[0], zrange_u0[0]
+        self.zwidth_u1, self.zshift_u1 = zrange_u1[1] - zrange_u1[0], zrange_u1[0]
+
     def generate(self, nsamples: int):
-        nproxies = self.problem_dims.nz + self.problem_dims.nx
         u_ix = self.problem_dims.u_ix
         t_ix = self.problem_dims.t_ix
         y_ix = self.problem_dims.y_ix
@@ -33,13 +41,17 @@ class ContinuousFixedGenerator:
         full_samples[:, t_ix] = t_vals
         full_samples[:, y_ix] = y_vals
 
-        # generate proxies
-        for i in range(nproxies):
-            if i % 2 == 0:
-                ps = self.proxy_biases[i] + self.proxy_shift * u_vals
-            else:
-                ps = self.proxy_biases[i] + self.proxy_shift * (1 - u_vals)
-            full_samples[:, i] = np.random.uniform(size=nsamples) < ps
+        for z_ix in self.problem_dims.z_ixs:
+            scales = self.zwidth_u0 * (1 - u_vals) + self.zwidth_u1 * u_vals
+            shifts = self.zshift_u0 * (1 - u_vals) + self.zshift_u1 * u_vals
+            z_vals = np.random.uniform(size=nsamples) * scales + shifts
+            full_samples[:, z_ix] = z_vals
+
+        for x_ix in self.problem_dims.x_ixs:
+            scales = self.xwidth_u0 * (1 - u_vals) + self.xwidth_u1 * u_vals
+            shifts = self.xshift_u0 * (1 - u_vals) + self.xshift_u1 * u_vals
+            x_vals = np.random.uniform(size=nsamples) * scales + shifts
+            full_samples[:, x_ix] = x_vals
 
         obs_samples = full_samples[:, :-1]
         return full_samples, obs_samples

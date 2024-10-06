@@ -3,10 +3,10 @@ import numpy as np
 
 # === IMPORTS: LOCAL ===
 from src.problem_dims import ProblemDimensions
-from src.moments.moments import Moments
+from src.observable_moments import ObservableMoments
 
 
-def get_empirical_moments(
+def compute_empirical_moments(
     problem_dims: ProblemDimensions,
     obs_samples: np.ndarray
 ):
@@ -33,6 +33,7 @@ def get_empirical_moments(
     E_Z_T = dict()
     E_X_T = dict()
     M_ZX_T = dict()
+    M_ZY_T = dict()
     M_ZXY_T = dict()
     for t in range(problem_dims.ntreatments):
         t_ixs = obs_samples[:, problem_dims.t_ix] == 1
@@ -40,9 +41,10 @@ def get_empirical_moments(
         E_Z_T[t] = Zsamples[t_ixs]
         E_X_T[t] = Xsamples[t_ixs]
         M_ZX_T[t] = np.einsum("iz,ix->zx", Zsamples[t_ixs], Xsamples[t_ixs]) / nsamples_t
+        M_ZY_T[t] = np.einsum("iz,i->z", Zsamples[t_ixs], Ysamples[t_ixs]) / nsamples_t
         M_ZXY_T[t] = np.einsum("iz,ix,i->zx", Zsamples[t_ixs], Xsamples[t_ixs], Ysamples[t_ixs]) / nsamples_t
 
-    return Moments(
+    return ObservableMoments(
         # first moments
         E_Z, 
         E_X, 

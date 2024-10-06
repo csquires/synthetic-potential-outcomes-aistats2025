@@ -9,8 +9,8 @@ from tqdm import trange
 from src.problem_dims import ProblemDimensions
 from src.data_generation.binary_generator import BinaryGenerator
 
-from src.moments.population_moments_discrete import get_population_moments
-from src.moments.empirical_moments import get_empirical_moments
+from src.causal_moments.causal_moments_discrete import compute_potential_outcome_moments_discrete
+from src.observable_moments.empirical_moments import compute_empirical_moments
 from src.methods.synthetic_potential_outcomes import SyntheticPotentialOutcomes
 
 
@@ -24,8 +24,10 @@ problem_dims = ProblemDimensions(nz, nx, ngroups, ntreatments)
 
 # ==== DEFINE DATA GENERATOR ====
 generator = BinaryGenerator(problem_dims, matching_coef=0.25, treatment_coef=0.25)
-population_moments = get_population_moments(generator.true_marginal())
-true_source_probs, true_means = compute_source_probs_and_means(population_moments.p_ytu)
+marginal = generator.true_marginal()
+y0_moments, y1_moments, r_moments, Pu = compute_potential_outcome_moments_discrete(marginal, 1)
+true_means = y0_moments[1], y1_moments[1]
+true_source_probs = Pu
 
 # ==== RUN METHOD ====
 nsamples = int(5e5)
@@ -35,7 +37,7 @@ all_estimated_means = np.zeros((nruns, problem_dims.ngroups))
 for r in trange(nruns):
     # ==== GENERATE SAMPLES AND COMPUTE MOMENTS ====
     full_samples, obs_samples = generator.generate(nsamples=nsamples)
-    moments = get_empirical_moments(problem_dims, obs_samples)
+    moments = compute_empirical_moments(problem_dims, obs_samples)
 
     # ==== RUN METHOD ====
     spo = SyntheticPotentialOutcomes(problem_dims, decomposition_method="matrix_pencil")

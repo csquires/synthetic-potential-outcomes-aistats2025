@@ -2,10 +2,10 @@
 import numpy as np
 
 # === IMPORTS: LOCAL ===
-from src.moments.moments import Moments
+from src.observable_moments import ObservableMoments
 
 
-def get_population_moments(full_marginal: np.ndarray):
+def compute_observable_moments_discrete(full_marginal: np.ndarray):
     ntreatments = full_marginal.shape[3]
 
     Pzxyt = np.einsum("zxytu->zxyt", full_marginal)
@@ -33,7 +33,7 @@ def get_population_moments(full_marginal: np.ndarray):
     Pzx_t = np.einsum("zxt,t->zxt", Pzxt, Pt ** -1)
     Pzxy_t = np.einsum("zxyt,t->zxyt", Pzxyt, Pt ** -1)
 
-    return Moments(
+    return ObservableMoments(
         # first moments
         E_Z=Pz, 
         E_X=Px, 
@@ -52,32 +52,3 @@ def get_population_moments(full_marginal: np.ndarray):
         # conditional third moments
         MZXY_T={t: Pzxy_t[:, :, 1, t] for t in range(ntreatments)}
     )
-
-
-
-    # def moments_Y1(self, max_order: int):
-    #     moments = [1]
-    #     for order in range(1, max_order+1):
-    #         mean_y1_given_u = np.einsum("u,u->u", self.Pytu[1, 1, :], self.Ptu[1, :]**-1)
-    #         moments_y1_given_u = mean_y1_given_u ** order
-    #         moment = np.einsum("u,u", self.Pu, moments_y1_given_u)
-    #         moments.append(moment)
-    #     return moments
-
-    # def moments_Y0(self, max_order: int):
-    #     moments = [1]
-    #     for order in range(1, max_order+1):
-    #         mean_y0_given_u = np.einsum("u,u->u", self.Pytu[1, 0, :], self.Ptu[0, :]**-1)
-    #         moments_y0_given_u = mean_y0_given_u ** order
-    #         moment = np.einsum("u,u", self.Pu, moments_y0_given_u)
-    #         moments.append(moment)
-    #     return moments
-    
-    # def moments_R(self, max_order: int):
-    #     moments = [1]
-    #     for order in range(1, max_order+1):
-    #         mean_r_given_u = np.einsum("u,u->u", self.Pytu[1, 1, :] - self.Pytu[1, 0, :], self.Ptu[1, :]**-1)
-    #         moments_r_given_u = mean_r_given_u ** order
-    #         moment = np.einsum("u,u", self.Pu, moments_r_given_u)
-    #         moments.append(moment)
-    #     return moments
