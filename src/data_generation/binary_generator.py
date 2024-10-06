@@ -91,22 +91,10 @@ class BinaryGenerator:
         for proxy_conditional in reversed(proxy_conditionals):
             current_marginal = np.einsum("vu,...u->v...u", proxy_conditional, current_marginal)
 
-        return current_marginal
+        dz = 2 ** self.problem_dims.nz
+        dx = 2 ** self.problem_dims.nx
+        dy, dt, du = 2, self.problem_dims.ntreatments, self.problem_dims.ngroups
+        final_marginal = current_marginal.reshape(dz, dx, dy, dt, du)
+        return final_marginal
     
 
-if __name__ == "__main__":
-    nproxies = 4
-    config = ProblemDimensions(nproxies=nproxies, ngroups=2, ntreatments=2)
-    generator = DiscreteFixedGenerator(config)
-    full_samples, obs_samples = generator.generate(1000)
-    u0_samples = full_samples[full_samples[:, config.u_ix] == 0]
-    u1_samples = full_samples[full_samples[:, config.u_ix] == 1]
-
-    print(np.mean(u0_samples[:, :nproxies], axis=0))
-    print(np.mean(u1_samples[:, :nproxies], axis=0))
-
-    marginal = generator.true_marginal()
-    print(marginal.sum(axis=(1, 2, 3, 4, 5, 6))[1])
-    print(marginal.sum(axis=(0, 2, 3, 4, 5, 6))[1])
-    print(marginal.sum(axis=(0, 1, 3, 4, 5, 6))[1])
-    print(marginal.sum(axis=(0, 1, 2, 4, 5, 6))[1])

@@ -21,11 +21,11 @@ def compute_empirical_moments(
     # first moments
     E_Z = Zsamples.mean(axis=0)
     E_X = Xsamples.mean(axis=0)
-    E_tY = None
+    E_tY = tYsamples.mean(axis=0)
     # second moments
     M_ZX = np.einsum("iz,ix->zx", Zsamples, Xsamples) / nsamples
     M_ZtY = np.einsum("iz,it->zt", Zsamples, tYsamples) / nsamples
-    M_XtY = np.einsum("iz,it->xt", Xsamples, tYsamples) / nsamples
+    M_XtY = np.einsum("ix,it->xt", Xsamples, tYsamples) / nsamples
     # third moments
     M_ZXtY = np.einsum("iz,ix,it->zxt", Zsamples, Xsamples, tYsamples) / nsamples
 
@@ -36,7 +36,7 @@ def compute_empirical_moments(
     M_ZY_T = dict()
     M_ZXY_T = dict()
     for t in range(problem_dims.ntreatments):
-        t_ixs = obs_samples[:, problem_dims.t_ix] == 1
+        t_ixs = obs_samples[:, problem_dims.t_ix] == t
         nsamples_t = sum(t_ixs)
         E_Z_T[t] = Zsamples[t_ixs]
         E_X_T[t] = Xsamples[t_ixs]
@@ -60,6 +60,7 @@ def compute_empirical_moments(
         E_X_T,
         # conditional second moments
         M_ZX_T,
+        M_ZY_T,
         # conditional third moments
         M_ZXY_T
     )

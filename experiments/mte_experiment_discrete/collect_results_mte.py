@@ -56,4 +56,4 @@ results = dict(
     true_source_probs=true_source_probs,
     true_means=true_means,
 )
-pickle.dump(results, open("experiments/mte_experiment/results.pkl", "wb"))
+pickle.dump(results, open("experiments/mte_experiment_discrete/results.pkl", "wb"))

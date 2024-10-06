@@ -52,4 +52,4 @@ results = dict(
     y0_ests=y0_ests,
     y1_ests=y1_ests
 )
-pickle.dump(results, open("experiments/ate_experiment/results.pkl", "wb"))
+pickle.dump(results, open("experiments/ate_experiment_discrete/results.pkl", "wb"))

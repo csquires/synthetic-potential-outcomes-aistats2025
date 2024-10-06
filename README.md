@@ -1,5 +1,5 @@
 
-# Code for *Synthetic Potential Outcomes for Mixtures of Treatment effects*
+# Code for *Synthetic Potential Outcomes and Causal Mixture Identifiability*
 
 ## Setup instructions
 Our code was tested with Python 3.9 and should be compatible with Python>=3.9. To install the necessary packages:
