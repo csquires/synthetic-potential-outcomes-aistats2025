@@ -25,9 +25,8 @@ problem_dims = ProblemDimensions(nz, nx, ngroups, ntreatments)
 # ==== DEFINE DATA GENERATOR ====
 generator = BinaryGenerator(problem_dims, matching_coef=0.25, treatment_coef=0.25)
 marginal = generator.true_marginal()
-y0_moments, y1_moments, r_moments, Pu = compute_potential_outcome_moments_discrete(marginal, 1)
-true_means = y0_moments[1], y1_moments[1]
-true_source_probs = Pu
+causal_moments = compute_potential_outcome_moments_discrete(marginal, 1)
+true_means = causal_moments.E_R_U
 
 # ==== RUN METHOD ====
 nsamples = int(5e5)
@@ -53,7 +52,7 @@ for r in trange(nruns):
 results = dict(
     all_estimated_source_probs=all_estimated_source_probs,
     all_estimated_means=all_estimated_means,
-    true_source_probs=true_source_probs,
+    true_source_probs=causal_moments.Pu,
     true_means=true_means,
 )
 pickle.dump(results, open("experiments/mte_experiment_discrete/results.pkl", "wb"))

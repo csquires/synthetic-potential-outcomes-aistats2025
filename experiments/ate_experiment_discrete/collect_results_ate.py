@@ -25,8 +25,8 @@ problem_dims = ProblemDimensions(nz, nx, ngroups, ntreatments)
 # ==== DEFINE DATA GENERATOR ====
 generator = BinaryGenerator(problem_dims, matching_coef=0.25, treatment_coef=0.25)
 marginal = generator.true_marginal()
-y0_moments, y1_moments, r_moments, Pu = compute_potential_outcome_moments_discrete(marginal, 1)
-true_mean_y0, true_mean_y1 = y0_moments[1], y1_moments[1]
+causal_moments = compute_potential_outcome_moments_discrete(marginal, 1)
+true_mean_y0, true_mean_y1 = causal_moments.moments_Y0[1], causal_moments.moments_Y1[1]
 
 
 # ==== RUN METHOD ====
