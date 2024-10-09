@@ -21,7 +21,7 @@ class BinaryGenerator:
         self.subgroup_coef = subgroup_coef
 
         # P(U)
-        self.Pu = np.ndarray([0.5, 0.5])
+        self.Pu = np.array([0.5, 0.5])
 
         # P(T | U)
         self.Pt_u = np.zeros((2, 2))

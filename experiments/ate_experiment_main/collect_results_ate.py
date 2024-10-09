@@ -9,7 +9,7 @@ from tqdm import trange
 from src.data_generation.generator_main import BinaryGeneratorMain
 
 from src.causal_moments.causal_moments_discrete import compute_potential_outcome_moments_discrete
-from src.observable_moments.empirical_moments import compute_empirical_moments
+from src.observable_moments.empirical_moments import compute_empirical_moments, binary_feature_map_single
 from src.methods.synthetic_potential_outcomes import SyntheticPotentialOutcomes
 
 
@@ -29,7 +29,8 @@ all_estimated_means = np.zeros((nruns, 2))
 for r in trange(nruns):
     # ==== GENERATE SAMPLES AND COMPUTE MOMENTS ====
     full_samples, obs_samples = generator.generate(nsamples=nsamples)
-    moments = compute_empirical_moments(generator.problem_dims, obs_samples)
+    new_samples = binary_feature_map_single(obs_samples)
+    moments = compute_empirical_moments(generator.problem_dims, new_samples)
 
     # ==== RUN METHOD ====
     spo = SyntheticPotentialOutcomes(generator.problem_dims, decomposition_method="matrix_pencil")

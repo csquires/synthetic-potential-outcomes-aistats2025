@@ -14,7 +14,12 @@ def lookup_binary(Vab: np.ndarray, avals, bvals):
     onehot[:, 2] = avals * (1 - bvals)          # A = 1, B = 0
     onehot[:, 3] = avals * bvals                # A = 1, B = 1
 
-    flatV = Vab.flatten()
+    flatV = np.zeros(4)
+    flatV[0] = Vab[0, 0]
+    flatV[1] = Vab[0, 1]
+    flatV[2] = Vab[1, 0]
+    flatV[3] = Vab[1, 1]
+
     vals = np.einsum("id,d->i", onehot, flatV)
     return vals
 
@@ -27,20 +32,20 @@ class BinaryGeneratorMain:
         ):
         self.lambda_treatment = lambda_treatment
         self.lambda_outcome = lambda_outcome
-        self.problem_dims = BinaryProblemDimensions(1, 1, 2, 2)
+        self.problem_dims = BinaryProblemDimensions(nz=1, nx=1, ngroups=2, ntreatments=2)
 
         # P(U)
-        self.Pu = np.ndarray([0.5, 0.5])
+        self.Pu = np.array([0.5, 0.5])
 
         # P(Z | U)
         self.Pz_u = np.zeros((2, 2))
-        self.Pz_u[:, 0] = np.array([1/4, 3/4])  # given U = 0
-        self.Pz_u[:, 1] = np.array([3/4, 1/4])  # given U = 1
+        self.Pz_u[:, 0] = np.array([3/4, 1/4])  # given U = 0
+        self.Pz_u[:, 1] = np.array([1/4, 3/4])  # given U = 1
 
         # P(X | U)
         self.Px_u = np.zeros((2, 2))
-        self.Px_u[:, 0] = np.array([1/4, 3/4])  # given U = 0
-        self.Px_u[:, 1] = np.array([3/4, 1/4])  # given U = 1
+        self.Px_u[:, 0] = np.array([3/4, 1/4])  # given U = 0
+        self.Px_u[:, 1] = np.array([1/4, 3/4])  # given U = 1
 
         # P(T | Z, U)
         a = lambda_treatment
@@ -51,25 +56,25 @@ class BinaryGeneratorMain:
         self.Pt_zu[:, 1, 1] = np.array([3/4, 1/4])              # given Z = 1, U = 1
 
         # E(Y0 | X, U)
-        self.Py0_xu = np.zeros((2, 2))
+        self.Py0_xu = np.zeros((2, 2, 2))
         b = self.lambda_outcome
-        self.Py0_xu[0, 0] = 1 + 3 * b      # given X = 0, U = 0
-        self.Py0_xu[0, 1] = 4 * b          # given X = 0, U = 1
-        self.Py0_xu[1, 0] = 1 - b          # given X = 1, U = 0
-        self.Py0_xu[1, 1] = 0              # given X = 1, U = 1
+        self.Py0_xu[:, 0, 0] = np.array([1/4, 3/4])                # given X = 0, U = 0
+        self.Py0_xu[:, 0, 1] = np.array([3/4 - b/2, 1/4 + b/2])    # given X = 0, U = 1
+        self.Py0_xu[:, 1, 0] = np.array([1/4 + b/2, 3/4 - b/2])    # given X = 1, U = 0
+        self.Py0_xu[:, 1, 1] = np.array([3/4, 1/4])                # given X = 1, U = 1
 
         # E(Y1 | X, U)
-        self.Py1_xu = np.zeros((2, 2))
+        self.Py1_xu = np.zeros((2, 2, 2))
         b = self.lambda_outcome
-        self.Py1_xu[0, 0] = 6 * b          # given X = 0, U = 0
-        self.Py1_xu[0, 1] = 5 + b          # given X = 0, U = 1
-        self.Py1_xu[1, 0] = 2 * b          # given X = 1, U = 0
-        self.Py1_xu[1, 1] = 5 - 3 * b      # given X = 1, U = 1
+        self.Py1_xu[:, 0, 0] = np.array([3/4, 1/4])                # given X = 0, U = 0
+        self.Py1_xu[:, 0, 1] = np.array([1/4 + b/2, 3/4 - b/2])    # given X = 0, U = 1
+        self.Py1_xu[:, 1, 0] = np.array([3/4 - b/2, 1/4 + b/2])    # given X = 1, U = 0
+        self.Py1_xu[:, 1, 1] = np.array([1/4, 3/4])                # given X = 1, U = 1
 
         # E(Y | X, T, U) --- repetitive, but convenient
-        self.Py_xtu = np.zeros((2, 2, 2))
-        self.Py_xtu[:, 0, :] = self.Py0_xu
-        self.Py_xtu[:, 1, :] = self.Py1_xu
+        self.Py_xtu = np.zeros((2, 2, 2, 2))
+        self.Py_xtu[:, :, 0, :] = self.Py0_xu
+        self.Py_xtu[:, :, 1, :] = self.Py1_xu
 
     def generate(self, nsamples: int):
         full_samples = np.ndarray((nsamples, 5))
@@ -78,11 +83,11 @@ class BinaryGeneratorMain:
         u_vals = np.random.binomial(n=1, p=0.5, size=nsamples)
 
         # X | U
-        x_cutoffs = (1 - u_vals) * 3/4 + u_vals * 1/4
+        x_cutoffs = (1 - u_vals) * 1/4 + u_vals * 3/4
         x_vals = np.random.uniform(size=nsamples) < x_cutoffs
 
         # Z | U
-        z_cutoffs = (1 - u_vals) * 3/4 + u_vals * 1/4
+        z_cutoffs = (1 - u_vals) * 1/4 + u_vals * 3/4
         z_vals = np.random.uniform(size=nsamples) < z_cutoffs
         
         # T | Z, U
@@ -90,8 +95,8 @@ class BinaryGeneratorMain:
         t_vals = np.random.uniform(size=nsamples) < t_cutoffs
         
         # Y | X, T, U
-        y0_vals = lookup_binary(self.Py0_xu, x_vals, u_vals)
-        y1_vals = lookup_binary(self.Py1_xu, x_vals, u_vals)
+        y0_vals = lookup_binary(self.Py0_xu[1, :, :], x_vals, u_vals)
+        y1_vals = lookup_binary(self.Py1_xu[1, :, :], x_vals, u_vals)
         y_cutoffs = (1 - t_vals) * y0_vals + t_vals * y1_vals
         y_vals = np.random.uniform(size=nsamples) < y_cutoffs
 

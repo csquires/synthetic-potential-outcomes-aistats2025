@@ -6,6 +6,24 @@ from src.problem_dims import ProblemDimensions
 from src.observable_moments import ObservableMoments
 
 
+def binary_feature_map_single(obs_samples):
+    assert obs_samples.shape[1] == 4
+
+    new_samples = np.zeros((obs_samples.shape[0], 6))
+    # Z
+    new_samples[:, 0] = 1 - obs_samples[:, 0]
+    new_samples[:, 1] = obs_samples[:, 0]
+    # X
+    new_samples[:, 2] = 1 - obs_samples[:, 1]
+    new_samples[:, 3] = obs_samples[:, 1]
+    # Y
+    new_samples[:, 4] = obs_samples[:, 2]
+    # U
+    new_samples[:, 5] = obs_samples[:, 3]
+
+    return new_samples
+
+
 def compute_empirical_moments(
     problem_dims: ProblemDimensions,
     obs_samples: np.ndarray
@@ -38,8 +56,8 @@ def compute_empirical_moments(
     for t in range(problem_dims.ntreatments):
         t_ixs = obs_samples[:, problem_dims.t_ix] == t
         nsamples_t = sum(t_ixs)
-        E_Z_T[t] = Zsamples[t_ixs]
-        E_X_T[t] = Xsamples[t_ixs]
+        E_Z_T[t] = Zsamples[t_ixs].mean(axis=0)
+        E_X_T[t] = Xsamples[t_ixs].mean(axis=0)
         M_ZX_T[t] = np.einsum("iz,ix->zx", Zsamples[t_ixs], Xsamples[t_ixs]) / nsamples_t
         M_ZY_T[t] = np.einsum("iz,i->z", Zsamples[t_ixs], Ysamples[t_ixs]) / nsamples_t
         M_ZXY_T[t] = np.einsum("iz,ix,i->zx", Zsamples[t_ixs], Xsamples[t_ixs], Ysamples[t_ixs]) / nsamples_t

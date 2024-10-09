@@ -31,6 +31,7 @@ def compute_observable_moments_discrete(full_marginal: np.ndarray):
     Pz_t = np.einsum("zt,t->zt", Pzt, Pt ** -1)
     Px_t = np.einsum("xt,t->xt", Pxt, Pt ** -1)
     Pzx_t = np.einsum("zxt,t->zxt", Pzxt, Pt ** -1)
+    Pzy_t = np.einsum("zyt,t->zyt", Pzyt, Pt ** -1)
     Pzxy_t = np.einsum("zxyt,t->zxyt", Pzxyt, Pt ** -1)
 
     return ObservableMoments(
@@ -49,6 +50,7 @@ def compute_observable_moments_discrete(full_marginal: np.ndarray):
         E_X_T={t: Px_t[:, t] for t in range(ntreatments)},
         # conditional second moments
         M_ZX_T={t: Pzx_t[:, :, t] for t in range(ntreatments)},
+        M_ZY_T={t: Pzy_t[:, 1, t] for t in range(ntreatments)},
         # conditional third moments
-        MZXY_T={t: Pzxy_t[:, :, 1, t] for t in range(ntreatments)}
+        M_ZXY_T={t: Pzxy_t[:, :, 1, t] for t in range(ntreatments)}
     )
