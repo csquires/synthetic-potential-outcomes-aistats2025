@@ -5,15 +5,6 @@ import numpy as np
 from src.problem_dims import ProblemDimensions
 
 
-def sample(uvals, conditional_u0, conditional_u1):
-    u0_csum = np.cumsum(conditional_u0)
-    u1_csum = np.cumsum(conditional_u1)
-    eps = np.random.uniform(len(uvals))
-    u0_sample = np.argmax(eps < u0_csum)
-    u1_sample = np.argmax(eps < u0_csum)
-    breakpoint()
-
-
 class DiscreteGenerator:
     def __init__(
             self, 
@@ -26,17 +17,37 @@ class DiscreteGenerator:
         self.matching_coef = matching_coef
         self.treatment_coef = treatment_coef
         self.subgroup_coef = subgroup_coef
-
         nz, nx = problem_dims.nz, problem_dims.nx
-        self.Pz_u0 = np.arange(1, nz+1)
-        self.Pz_u1 = np.arange(nz+1, 1, -1)
-        self.Pz_u0 = self.Pz_u0 / sum(self.Pz_u0)
-        self.Pz_u1 = self.Pz_u1 / sum(self.Pz_u1)
 
-        self.Px_u0 = np.arange(nx+2, 2, -1)
-        self.Px_u1 = np.arange(2, nx+2)
-        self.Px_u0 = self.Px_u0 / sum(self.Px_u0)
-        self.Px_u1 = self.Px_u1 / sum(self.Px_u1)
+        # P(U)
+        self.Pu = np.ndarray([0.5, 0.5])
+
+        # P(T | U)
+        self.Pt_u = np.zeros((2, 2))
+        self.Pt_u[:, 0] = np.array([1/4, 3/4])  # given U = 0
+        self.Pt_u[:, 1] = np.array([3/4, 1/4])  # given U = 1
+
+        # P(Y | T, U)
+        a = self.matching_coef
+        b = self.treatment_coef
+        c = self.subgroup_coef
+        self.Py_tu = np.zeros((2, 2, 2))
+        self.Py_tu[:, 0, 0] = np.array([3/4 - a, 1/4 + a])  # given T=0, U=0
+        self.Py_tu[:, 0, 1] = np.array([3/4 - c, 1/4 + c])  # given T=0, U=1
+        self.Py_tu[:, 1, 0] = np.array([3/4 - b, 1/4 + b])  # given T=1, U=0
+        self.Py_tu[:, 1, 1] = np.array([3/4 - a - b - c, 1/4 + a + b + c])  # given T=1, U=1
+
+        # P(Z | U)
+        self.Pz_u = np.zeros((nz, 2))
+        self.Pz_u[:, 0] = np.arange(1, nz+1)
+        self.Pz_u[:, 1] = np.arange(nz+1, 1, -1)
+        self.Pz_u = np.einsum("zu,u->zu", self.Pz_u, self.Pz_u.sum(axis=0))
+
+        # P(X | U)
+        self.Px_u = np.zeros((nx, 2))
+        self.Px_u[:, 0] = np.arange(1, nx+1)
+        self.Px_u[:, 1] = np.arange(nx+1, 1, -1)
+        self.Px_u = np.einsum("zu,u->zu", self.Px_u, self.Px_u.sum(axis=0))
 
     def generate(self, nsamples: int):
         z_ix = 0
@@ -62,37 +73,17 @@ class DiscreteGenerator:
         obs_samples = full_samples[:, :-1]
         return full_samples, obs_samples
     
-    def p_t_given_u(self):
-        P = np.zeros((2, 2))
-        P[:, 0] = np.array([1/4, 3/4])  # given U = 0
-        P[:, 1] = np.array([3/4, 1/4])  # given U = 1
-        return P
-    
-    def p_y_given_tu(self):
-        a = self.matching_coef   # add when U=T
-        b = self.treatment_coef  # add when T=1
-        c = self.subgroup_coef   # add when U=1
-        P = np.zeros((2, 2, 2))
-        P[:, 0, 0] = np.array([3/4 - a, 1/4 + a])  # given T=0, U=0
-        P[:, 0, 1] = np.array([3/4 - c, 1/4 + c])  # given T=0, U=1
-        P[:, 1, 0] = np.array([3/4 - b, 1/4 + b])  # given T=1, U=0
-        P[:, 1, 1] = np.array([3/4 - a - b - c, 1/4 + a + b + c])  # given T=1, U=1
-        return P
-    
-    def proxy_conditional(self, i):
-        pass
-    
     def true_marginal(self):
-        p_u = np.array([0.5, 0.5])  # u
-        p_t_given_u = self.p_t_given_u()  # t, u
-        p_y_given_tu = self.p_y_given_tu()  # y, t, u
-        proxy_conditionals = [self.proxy_conditional(i) for i in range(self.problem_dims.nx + self.problem_dims.nz)]
-        
-        current_marginal = np.einsum("ytu,tu,u->ytu", p_y_given_tu, p_t_given_u, p_u)
-        for proxy_conditional in reversed(proxy_conditionals):
-            current_marginal = np.einsum("vu,...u->v...u", proxy_conditional, current_marginal)
+        marginal = np.einsum(
+            "zu,xu,ytu,tu,u->zxytu",
+            self.Pz_u,
+            self.Px_u,
+            self.Py_tu, 
+            self.Pt_u, 
+            self.Pu
+        )
 
-        return current_marginal
+        return marginal
     
 
 if __name__ == "__main__":

@@ -2,13 +2,13 @@
 import numpy as np
 
 # === IMPORTS: LOCAL ===
-from src.problem_dims import ProblemDimensions
+from src.problem_dims import BinaryProblemDimensions
 
 
 class BinaryGenerator:
     def __init__(
             self, 
-            problem_dims: ProblemDimensions, 
+            problem_dims: BinaryProblemDimensions, 
             matching_coef: float = 0.25,
             treatment_coef: float = 0.25,
             subgroup_coef: float = 0,
@@ -19,6 +19,24 @@ class BinaryGenerator:
         self.matching_coef = matching_coef
         self.treatment_coef = treatment_coef
         self.subgroup_coef = subgroup_coef
+
+        # P(U)
+        self.Pu = np.ndarray([0.5, 0.5])
+
+        # P(T | U)
+        self.Pt_u = np.zeros((2, 2))
+        self.Pt_u[:, 0] = np.array([1/4, 3/4])  # given U = 0
+        self.Pt_u[:, 1] = np.array([3/4, 1/4])  # given U = 1
+
+        # P(Y | T, U)
+        a = self.matching_coef
+        b = self.treatment_coef
+        c = self.subgroup_coef
+        self.Py_tu = np.zeros((2, 2, 2))
+        self.Py_tu[:, 0, 0] = np.array([3/4 - a, 1/4 + a])  # given T=0, U=0
+        self.Py_tu[:, 0, 1] = np.array([3/4 - c, 1/4 + c])  # given T=0, U=1
+        self.Py_tu[:, 1, 0] = np.array([3/4 - b, 1/4 + b])  # given T=1, U=0
+        self.Py_tu[:, 1, 1] = np.array([3/4 - a - b - c, 1/4 + a + b + c])  # given T=1, U=1
 
         if proxy_biases is None:
             proxy_biases = np.linspace(0.2, 0.6, problem_dims.nz + problem_dims.nx)
@@ -52,23 +70,6 @@ class BinaryGenerator:
         obs_samples = full_samples[:, :-1]
         return full_samples, obs_samples
     
-    def p_t_given_u(self):
-        P = np.zeros((2, 2))
-        P[:, 0] = np.array([1/4, 3/4])  # given U = 0
-        P[:, 1] = np.array([3/4, 1/4])  # given U = 1
-        return P
-    
-    def p_y_given_tu(self):
-        a = self.matching_coef   # add when U=T
-        b = self.treatment_coef  # add when T=1
-        c = self.subgroup_coef   # add when U=1
-        P = np.zeros((2, 2, 2))
-        P[:, 0, 0] = np.array([3/4 - a, 1/4 + a])  # given T=0, U=0
-        P[:, 0, 1] = np.array([3/4 - c, 1/4 + c])  # given T=0, U=1
-        P[:, 1, 0] = np.array([3/4 - b, 1/4 + b])  # given T=1, U=0
-        P[:, 1, 1] = np.array([3/4 - a - b - c, 1/4 + a + b + c])  # given T=1, U=1
-        return P
-    
     def proxy_conditional(self, i):
         proxy_bias = self.proxy_biases[i]
         proxy_shift = self.proxy_shift
@@ -82,17 +83,13 @@ class BinaryGenerator:
         return P
     
     def true_marginal(self):
-        p_u = np.array([0.5, 0.5])  # u
-        p_t_given_u = self.p_t_given_u()  # t, u
-        p_y_given_tu = self.p_y_given_tu()  # y, t, u
         proxy_conditionals = [self.proxy_conditional(i) for i in range(self.problem_dims.nx + self.problem_dims.nz)]
         
-        current_marginal = np.einsum("ytu,tu,u->ytu", p_y_given_tu, p_t_given_u, p_u)
+        current_marginal = np.einsum("ytu,tu,u->ytu", self.Py_tu, self.Pt_u, self.Pu)
         for proxy_conditional in reversed(proxy_conditionals):
             current_marginal = np.einsum("vu,...u->v...u", proxy_conditional, current_marginal)
 
-        dz = 2 ** self.problem_dims.nz
-        dx = 2 ** self.problem_dims.nx
+        dz, dx = self.problem_dims.dz, self.problem_dims.dx
         dy, dt, du = 2, self.problem_dims.ntreatments, self.problem_dims.ngroups
         final_marginal = current_marginal.reshape(dz, dx, dy, dt, du)
         return final_marginal
