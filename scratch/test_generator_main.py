@@ -17,7 +17,7 @@ from src.methods.synthetic_potential_outcomes import SyntheticPotentialOutcomes
 
 np.random.seed(123)
 # ==== DEFINE DATA GENERATOR ====
-a, b = 0, 0
+a, b = 1, 1
 generator = BinaryGeneratorMain(lambda_treatment=a, lambda_outcome=b)
 marginal = generator.true_marginal()
 obs_moments = compute_observable_moments_discrete(marginal)
@@ -42,4 +42,5 @@ obs_moments_empirical = compute_empirical_moments(generator.problem_dims, new_sa
 
 # ==== RUN METHOD ====
 spo = SyntheticPotentialOutcomes(generator.problem_dims, decomposition_method="matrix_pencil")
-res = spo.fit(obs_moments_empirical)
+res = spo.fit(obs_moments)
+print(res)
