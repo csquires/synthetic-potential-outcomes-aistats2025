@@ -11,11 +11,11 @@ plt.rcParams["text.usetex"] = True
 plt.rc('font', family='serif')
 plt.rcParams['text.latex.preamble'] = r'\usepackage{amsfonts}'
 
-FIGURE_FOLDER = "experiments/mte_experiment_discrete/figures"
+FIGURE_FOLDER = "experiments/mte_experiment_main/figures"
 
 
 # === LOAD RESULTS ===
-results = pickle.load(open("experiments/mte_experiment_discrete/results.pkl", "rb"))
+results = pickle.load(open("experiments/mte_experiment_main/results.pkl", "rb"))
 true_source_probs = results["true_source_probs"]
 true_means = results["true_means"]
 all_estimated_source_probs = results["all_estimated_source_probs"]

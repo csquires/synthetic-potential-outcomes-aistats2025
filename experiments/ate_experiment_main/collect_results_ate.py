@@ -6,8 +6,7 @@ import numpy as np
 from tqdm import trange
 
 # === IMPORTS: LOCAL ===
-from src.problem_dims import ProblemDimensions
-from src.data_generation.binary_generator import BinaryGenerator
+from src.data_generation.generator_main import BinaryGeneratorMain
 
 from src.causal_moments.causal_moments_discrete import compute_potential_outcome_moments_discrete
 from src.observable_moments.empirical_moments import compute_empirical_moments
@@ -15,15 +14,9 @@ from src.methods.synthetic_potential_outcomes import SyntheticPotentialOutcomes
 
 
 np.random.seed(123)
-# ==== DEFINE THE PROBLEM CONFIGURATION ====
-nz = 2
-nx = 2
-ngroups = 2
-ntreatments = 2
-problem_dims = ProblemDimensions(nz, nx, ngroups, ntreatments)
-
 # ==== DEFINE DATA GENERATOR ====
-generator = BinaryGenerator(problem_dims, matching_coef=0.25, treatment_coef=0.25)
+a, b = 0, 0
+generator = BinaryGeneratorMain(lambda_treatment=a, lambda_outcome=b)
 marginal = generator.true_marginal()
 causal_moments = compute_potential_outcome_moments_discrete(marginal, 1)
 true_means = causal_moments.E_R_U
@@ -31,15 +24,15 @@ true_means = causal_moments.E_R_U
 # ==== RUN METHOD ====
 nsamples = int(5e5)
 nruns = 100
-all_estimated_source_probs = np.zeros((nruns, problem_dims.ngroups))
-all_estimated_means = np.zeros((nruns, problem_dims.ngroups))
+all_estimated_source_probs = np.zeros((nruns, 2))
+all_estimated_means = np.zeros((nruns, 2))
 for r in trange(nruns):
     # ==== GENERATE SAMPLES AND COMPUTE MOMENTS ====
     full_samples, obs_samples = generator.generate(nsamples=nsamples)
-    moments = compute_empirical_moments(problem_dims, obs_samples)
+    moments = compute_empirical_moments(generator.problem_dims, obs_samples)
 
     # ==== RUN METHOD ====
-    spo = SyntheticPotentialOutcomes(problem_dims, decomposition_method="matrix_pencil")
+    spo = SyntheticPotentialOutcomes(generator.problem_dims, decomposition_method="matrix_pencil")
     res = spo.fit(moments)
 
     # === SAVE RESULTS ===
@@ -55,4 +48,4 @@ results = dict(
     true_source_probs=causal_moments.Pu,
     true_means=true_means,
 )
-pickle.dump(results, open("experiments/mte_experiment_discrete/results.pkl", "wb"))
+pickle.dump(results, open("experiments/ate_experiment_main/results.pkl", "wb"))
