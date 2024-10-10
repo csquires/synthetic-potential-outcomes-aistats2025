@@ -90,6 +90,7 @@ axes[0].set_ylabel(fr"Mixture estimation error", fontsize=24)
 
 axes[1].axhline(ax1_mean, linestyle="--", color="gray")
 axes[1].plot(zt_strengths, mte_errors.mean(axis=1))
+axes[1].fill_between(zt_strengths, np.quantile(mte_errors, 0.25, axis=1), np.quantile(mte_errors, 0.75, axis=1), alpha=0.5)
 axes[1].set_ylim(0, 2 * ax1_mean)
 axes[1].set_xlabel(fr"$\mu_{{zt}}$", fontsize=24)
 axes[1].set_ylabel(fr"MTE estimation error", fontsize=24)

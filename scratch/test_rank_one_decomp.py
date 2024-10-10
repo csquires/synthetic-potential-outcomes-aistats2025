@@ -6,6 +6,7 @@ from tensorly.decomposition import parafac, parafac_power_iteration
 from src.problem_dims import BinaryProblemDimensions
 from src.data_generation.binary_generator import BinaryGenerator
 from src.observable_moments.population_moments_discrete import compute_observable_moments_discrete
+from src.mixture_moments.mixture_moments_discrete import compute_mixture_moments_discrete
 
 
 np.random.seed(123)
@@ -23,6 +24,7 @@ marginal = marginal.reshape(2**nz, 2**nx, 2, ntreatments, ngroups)
 
 
 oracle_moments = compute_observable_moments_discrete(marginal)
+mixture_moments = compute_mixture_moments_discrete(marginal)
 M_ZXS = oracle_moments.M_ZXS
 E_Z = oracle_moments.E_Z
 E_X = oracle_moments.E_X
@@ -37,15 +39,15 @@ if PARAFAC:
     factors = res.factors
     Z_factor = factors[0]
     X_factor = factors[1]
-    tY_factor = factors[2]
+    S_factor = factors[2]
 else:
     res = parafac_power_iteration(M_ZXS, rank)
     weights, factors = res[0], res[1]
     Z_factor = factors[0]
     X_factor = factors[1]
-    tY_factor = factors[2]
+    S_factor = factors[2]
 
-P = np.einsum("u,zu,xu,tu->zxt", weights, Z_factor, X_factor, tY_factor)
+P = np.einsum("u,zu,xu,tu->zxt", weights, Z_factor, X_factor, S_factor)
 diff = np.max(np.abs(P - M_ZXS))
 print(diff)
 
