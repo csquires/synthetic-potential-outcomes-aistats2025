@@ -9,6 +9,7 @@ def compute_observable_moments_discrete(full_marginal: np.ndarray):
     ntreatments = full_marginal.shape[3]
 
     Pzxyt = np.einsum("zxytu->zxyt", full_marginal)
+    dz, dx, _, _ = Pzxyt.shape
     
     # === OBSERVED ===
     # 3-way marginals
@@ -16,21 +17,21 @@ def compute_observable_moments_discrete(full_marginal: np.ndarray):
     Pzxt = np.einsum("zxyt->zxt", Pzxyt)
     Pzyt = np.einsum("zxyt->zyt", Pzxyt)
     Pxyt = np.einsum("zxyt->xyt", Pzxyt)
-    Pzxs = Pzxyt[:, :, 1, :] - Pzxyt[:, :, 0, :]  # not actually distribution
+    Pzxs = Pzxyt.reshape((dz, dx, 4))
 
     # 2-way marginals
     Pzx = np.einsum("zxy->zx", Pzxy)
     Pzt = np.einsum("zxt->zt", Pzxt)
     Pxt = np.einsum("zxt->xt", Pzxt)
     Pyt = np.einsum("xyt->yt", Pxyt)
-    Pzs = np.einsum("zxs->zs", Pzxs)  # not actually distribution
-    Pxs = np.einsum("zxs->xs", Pzxs)  # not actually distribution
+    Pzs = np.einsum("zxs->zs", Pzxs)
+    Pxs = np.einsum("zxs->xs", Pzxs)
 
     # univariate marginals
     Pz = np.einsum("zx->z", Pzx)
     Px = np.einsum("zx->x", Pzx)
     Pt = np.einsum("yt->t", Pyt)
-    Ps = np.einsum("zs->s", Pzs)  # not actually distribution
+    Ps = np.einsum("zs->s", Pzs)
     
     Pz_t = np.einsum("zt,t->zt", Pzt, Pt ** -1)
     Px_t = np.einsum("xt,t->xt", Pxt, Pt ** -1)

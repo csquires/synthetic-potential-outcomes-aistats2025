@@ -10,6 +10,8 @@ import seaborn as sns
 
 # === IMPORTS: LOCAL ===
 from src.causal_moments.causal_moments_discrete import compute_potential_outcome_moments_discrete
+from src.mixture_moments.mixture_moments_discrete import compute_mixture_moments_discrete
+from src.mixture_moments import MixtureMoments
 
 plt.rcParams["text.usetex"] = True
 plt.rc('font', family='serif')
@@ -32,6 +34,27 @@ def mte_error(
     return term1 + term2
 
 
+def mixture_error(
+    true_dist: np.ndarray,
+    estimated_mixture: MixtureMoments
+):
+    true_dist = true_dist.reshape((2, 2, 4, 2))
+    estimated_dist = np.einsum(
+        "zu,xu,su,u->zxsu",
+        estimated_mixture.EZ_U,
+        estimated_mixture.EX_U,
+        estimated_mixture.ES_U,
+        estimated_mixture.Pu
+    )
+    estimated_dist_perm = np.zeros(estimated_dist.shape)
+    estimated_dist_perm[:, :, :, 0] = estimated_dist[:, :, :, 1]
+    estimated_dist_perm[:, :, :, 1] = estimated_dist[:, :, :, 0]
+
+    diff = np.sum(np.abs(true_dist - estimated_dist))
+    diff_perm = np.sum(np.abs(true_dist - estimated_dist_perm))
+    return min(diff, diff_perm)
+
+
 
 # === LOAD RESULTS ===
 results = pickle.load(open("experiments/level2_vs_level3/results.pkl", "rb"))
@@ -39,25 +62,32 @@ zt_strengths = results["zt_strengths"]
 true_dists = results["true_dists"]
 estimated_source_probs = results["estimated_source_probs"]
 estimated_mtes = results["estimated_mtes"]
-estimate_dists = results["estimated_dists"]
+estimate_mixtures = results["estimated_mixtures"]
 
 
 nruns = estimated_source_probs[0].shape[0]
 mte_errors = np.zeros((len(zt_strengths), nruns))
+mixture_errors = np.zeros((len(zt_strengths), nruns))
 for s_ix, zt_strength in enumerate(zt_strengths):
     # get true moments
-    causal_moments = compute_potential_outcome_moments_discrete(true_dists[zt_strength], 1)
-    true_source_probs_mu = causal_moments.Pu
-    true_mtes_mu = np.array([causal_moments.E_R_U[0], causal_moments.E_R_U[1]])
+    true_causal_moments = compute_potential_outcome_moments_discrete(true_dists[zt_strength], 1)
+    true_source_probs_mu = true_causal_moments.Pu
+    true_mtes_mu = np.array([true_causal_moments.E_R_U[0], true_causal_moments.E_R_U[1]])
 
     for r_ix in range(nruns):
         estimated_source_probs_mu = estimated_source_probs[zt_strength][r_ix]
         estimated_mtes_mu = estimated_mtes[zt_strength][r_ix]
+        estimated_mixture_moments_mu = estimate_mixtures[zt_strength][r_ix]
+
         mte_errors[s_ix, r_ix] = mte_error(
             true_source_probs_mu,
             true_mtes_mu,
             estimated_source_probs_mu,
             estimated_mtes_mu
+        )
+        mixture_errors[s_ix, r_ix] = mixture_error(
+            true_dists[zt_strength], 
+            estimated_mixture_moments_mu
         )
 
 
@@ -83,15 +113,38 @@ sns.set_theme()
 plt.clf()
 pylab.rcParams.update({"xtick.labelsize": "large", "ytick.labelsize": "large"})
 
-ax1_mean = mte_errors.mean()
+ax0_line = np.mean(mixture_errors)
+ax0_ylim = (ax0_line - 2 * np.std(mixture_errors), ax0_line + 2 * np.std(mixture_errors))
 
-fig, axes = plt.subplots(2, 1, figsize=(8, 8))
+ax1_line = np.mean(mte_errors)
+ax1_ylim = (ax1_line - 2 * np.std(mixture_errors), ax1_line + 2 * np.std(mixture_errors))
+
+ax0_middle = np.mean(mixture_errors, axis=1)
+ax0_stds = np.std(mixture_errors, axis=1)
+ax0_lower = ax0_middle - ax0_stds
+ax0_upper = ax0_middle + ax0_stds
+# ax0_lower = np.quantile(mixture_errors, 0.25, axis=1)
+# ax0_upper = np.quantile(mixture_errors, 0.75, axis=1)
+
+ax1_middle = np.mean(mte_errors, axis=1)
+ax1_stds = np.std(mixture_errors, axis=1)
+ax1_lower = ax1_middle - ax1_stds
+ax1_upper = ax1_middle + ax1_stds
+# ax1_lower = np.quantile(mte_errors, 0.25, axis=1)
+# ax1_upper = np.quantile(mte_errors, 0.75, axis=1)
+
+fig, axes = plt.subplots(2, 1, figsize=(4, 8))
+axes[0].axhline(ax0_line, linestyle="--", color="gray")
+axes[0].plot(zt_strengths, ax0_middle)
+axes[0].fill_between(zt_strengths, ax0_lower, ax0_upper, alpha=0.5)
+axes[0].set_ylim(*ax0_ylim)
 axes[0].set_ylabel(fr"Mixture estimation error", fontsize=24)
+axes[0].set_xticklabels([])
 
-axes[1].axhline(ax1_mean, linestyle="--", color="gray")
-axes[1].plot(zt_strengths, mte_errors.mean(axis=1))
-axes[1].fill_between(zt_strengths, np.quantile(mte_errors, 0.25, axis=1), np.quantile(mte_errors, 0.75, axis=1), alpha=0.5)
-axes[1].set_ylim(0, 2 * ax1_mean)
+axes[1].axhline(ax1_line, linestyle="--", color="gray")
+axes[1].plot(zt_strengths, ax1_middle)
+axes[1].fill_between(zt_strengths, ax1_lower, ax1_upper, alpha=0.5)
+axes[1].set_ylim(*ax1_ylim)
 axes[1].set_xlabel(fr"$\mu_{{zt}}$", fontsize=24)
 axes[1].set_ylabel(fr"MTE estimation error", fontsize=24)
 

@@ -34,9 +34,11 @@ def compute_empirical_moments(
     Ysamples = obs_samples[:, problem_dims.y_ix]
     Tsamples = obs_samples[:, problem_dims.t_ix]
     nsamples = obs_samples.shape[0]
-    Ssamples = np.zeros((nsamples, 2))
-    Ssamples[:, 0] = Ysamples * Tsamples
-    Ssamples[:, 1] = Ysamples * (1 - Tsamples)
+    Ssamples = np.zeros((nsamples, 4))
+    Ssamples[:, 0] = (1 - Ysamples) * (1 - Tsamples)
+    Ssamples[:, 1] = (1 - Ysamples) * Tsamples
+    Ssamples[:, 2] = Ysamples * (1 - Tsamples)
+    Ssamples[:, 3] = Ysamples * Tsamples
 
     # first moments
     E_Z = Zsamples.mean(axis=0)

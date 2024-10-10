@@ -36,22 +36,21 @@ class TensorDecompositionBinary:
         else:
             raise ValueError
     
+        recovery_error = np.max(np.abs(cp_to_tensor(res) - obs_moments.M_ZXS))
         if check_recovery:
-            Rec = cp_to_tensor(res)
-            diff = np.max(np.abs(Rec - obs_moments.M_ZXS))
-            print("difference between M_ZXS and recovered:", diff)
-            if diff > 0.0001:
+            print("difference between M_ZXS and recovered:", recovery_error)
+            if recovery_error > 0.0001:
                 breakpoint()
 
         Zscale = Z_factor.sum(axis=0)
         Xscale = X_factor.sum(axis=0)
-        Wscale = weights.sum()
+        Sscale = S_factor.sum(axis=0)
         EZ_U = np.einsum("zu,u->zu", Z_factor, Zscale ** -1)
         EX_U = np.einsum("xu,u->xu", X_factor, Xscale ** -1)
-        Pu = weights / Wscale
-        ES_U = np.einsum("su,u,u->su", S_factor, Zscale, Xscale) * Wscale
+        ES_U = np.einsum("su,u->su", S_factor, Sscale ** -1)
+        Pu = np.einsum("u,u,u,u->u", weights, Zscale, Xscale, Sscale)
         
-        return MixtureMoments(
+        mixture_moments = MixtureMoments(
             Pu=Pu,
             EZ_U=EZ_U,
             EX_U=EX_U,
@@ -60,6 +59,10 @@ class TensorDecompositionBinary:
             E_X_U={u: EX_U[:, u] for u in [0, 1]},
             E_S_U={u: ES_U[:, u] for u in [0, 1]},
         ) 
+        return dict(
+            mixture_moments=mixture_moments,
+            recovery_error=recovery_error
+        )
 
 
 class TensorDecomposition:

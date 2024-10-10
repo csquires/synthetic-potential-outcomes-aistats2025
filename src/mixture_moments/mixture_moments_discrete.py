@@ -9,7 +9,7 @@ def compute_mixture_moments_discrete(full_marginal: np.ndarray):
     Pzu = np.einsum("zxytu->zu", full_marginal)
     Pxu = np.einsum("zxytu->xu", full_marginal)
     Pytu = np.einsum("zxytu->ytu", full_marginal)
-    Psu = Pytu[1, :, :] - Pytu[0, :, :]
+    Psu = Pytu.reshape((-1, 2))
     Pu = np.einsum("zu->u", Pzu)
     
     Pz_u = np.einsum("zu,u->zu", Pzu, Pu ** -1)

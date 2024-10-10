@@ -87,21 +87,38 @@ sns.set_theme()
 plt.clf()
 pylab.rcParams.update({"xtick.labelsize": "large", "ytick.labelsize": "large"})
 
-ax0_mean = mte_errors.mean()
-ax1_mean = ate_errors.mean()
+ax0_line = np.mean(mte_errors)
+ax0_ylim = (ax0_line - 2 * np.std(mte_errors), ax0_line + 2 * np.std(mte_errors))
 
-fig, axes = plt.subplots(2, 1, figsize=(8, 8))
-axes[0].plot(xy_strengths, mte_errors.mean(axis=1))
-axes[0].fill_between(xy_strengths, np.quantile(mte_errors, 0.25, axis=1), np.quantile(mte_errors, 0.75, axis=1), alpha=0.5)
-axes[0].axhline(ax0_mean, linestyle="--", color="gray")
-axes[0].set_ylim(0, 2 * ax0_mean)
+ax1_line = np.mean(ate_errors)
+ax1_ylim = (ax1_line - 2 * np.std(ate_errors), ax1_line + 2 * np.std(ate_errors))
+
+ax0_middle = np.mean(mte_errors, axis=1)
+ax0_stds = np.std(mte_errors, axis=1)
+ax0_lower = ax0_middle - ax0_stds
+ax0_upper = ax0_middle + ax0_stds
+# ax0_lower = np.quantile(mte_errors, 0.25, axis=1)
+# ax0_upper = np.quantile(mte_errors, 0.75, axis=1)
+
+ax1_middle = np.mean(ate_errors, axis=1)
+ax1_stds = np.std(ate_errors, axis=1)
+ax1_lower = ax1_middle - ax1_stds
+ax1_upper = ax1_middle + ax1_stds
+# ax1_lower = np.quantile(ate_errors, 0.25, axis=1)
+# ax1_upper = np.quantile(ate_errors, 0.75, axis=1)
+
+fig, axes = plt.subplots(2, 1, figsize=(4, 8))
+axes[0].axhline(ax0_line, linestyle="--", color="gray")
+axes[0].plot(xy_strengths, ax0_middle)
+axes[0].fill_between(xy_strengths, ax0_lower, ax0_upper, alpha=0.5)
+axes[0].set_ylim(*ax0_ylim)
 axes[0].set_ylabel(fr"MTE estimation error", fontsize=24)
 axes[0].set_xticklabels([])
 
-axes[1].plot(xy_strengths, ate_errors.mean(axis=1))
-axes[1].fill_between(xy_strengths, np.quantile(ate_errors, 0.25, axis=1), np.quantile(ate_errors, 0.75, axis=1), alpha=0.5)
-axes[1].axhline(ax1_mean, linestyle="--", color="gray")
-axes[1].set_ylim(0, 2 * ax1_mean)
+axes[1].axhline(ax1_line, linestyle="--", color="gray")
+axes[1].plot(xy_strengths, ax1_middle)
+axes[1].fill_between(xy_strengths, ax1_lower, ax1_upper, alpha=0.5)
+axes[1].set_ylim(*ax1_ylim)
 axes[1].set_xlabel(fr"$\mu_{{xy}}$", fontsize=24)
 axes[1].set_ylabel(fr"ATE estimation error", fontsize=24)
 
