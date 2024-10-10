@@ -11,7 +11,7 @@ class BinaryProblemDimensions:
 
     def __post_init__(self):
         self.dz = 2 ** self.nz
-        self.dx = 2 ** self.nz
+        self.dx = 2 ** self.nx
 
         # Z: proxies that can cause T
         self.z_ixs = list(range(self.dz))

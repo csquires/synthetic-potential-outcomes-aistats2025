@@ -1,11 +1,61 @@
 # === IMPORTS: THIRD-PARTY ===
 import numpy as np
 from tensorly.decomposition import parafac, parafac_power_iteration
+from tensorly.cp_tensor import cp_to_tensor
 
 # === IMPORTS: LOCAL ===
 from src.problem_dims import GeneralProblemDimensions
 from src.observable_moments import ObservableMoments
 from src.mixture_moments import MixtureMoments
+
+
+class TensorDecompositionBinary:
+    def __init__(
+            self, 
+            problem_dims: GeneralProblemDimensions,
+            decomposition_method: str = "parafac"
+    ):
+        self.problem_dims = problem_dims
+        self.decomposition_method = decomposition_method
+
+    def fit(self, obs_moments: ObservableMoments):
+        rank = 2
+        if self.decomposition_method == "parafac":
+            res = parafac(obs_moments.M_ZXS, rank, n_iter_max=10000, return_errors=True)
+            breakpoint()
+            weights = res.weights
+            factors = res.factors
+            Z_factor = factors[0]
+            X_factor = factors[1]
+            S_factor = factors[2]
+        elif self.decomposition_method == "parafac_power":
+            res = parafac_power_iteration(obs_moments.M_ZXS, rank)
+            weights, factors = res[0], res[1]
+            Z_factor = factors[0]
+            X_factor = factors[1]
+            S_factor = factors[2]
+        else:
+            raise ValueError
+
+        Zscale = Z_factor.sum(axis=0)
+        Xscale = X_factor.sum(axis=0)
+        Wscale = weights.sum()
+        EZ_U = np.einsum("zu,u->zu", Z_factor, Zscale ** -1)
+        EX_U = np.einsum("xu,u->xu", X_factor, Xscale ** -1)
+        Pu = weights / Wscale
+        ES_U = np.einsum("su,u,u->su", S_factor, Zscale, Xscale) * Wscale
+
+        Rec = cp_to_tensor(res)
+        breakpoint()
+        return MixtureMoments(
+            Pu=Pu,
+            EZ_U=EZ_U,
+            EX_U=EX_U,
+            ES_U=ES_U,
+            E_Z_U={u: EZ_U[:, u] for u in [0, 1]},
+            E_X_U={u: EX_U[:, u] for u in [0, 1]},
+            E_S_U={u: ES_U[:, u] for u in [0, 1]},
+        ) 
 
 
 class TensorDecomposition:
@@ -18,18 +68,18 @@ class TensorDecomposition:
         self.decomposition_method = decomposition_method
 
     def fit(self, obs_moments: ObservableMoments):
-        dz, dx, dt = self.problem_dims.dz, self.problem_dims.dx, 2
-        M_aug = np.zeros((dz+1, dx+1, dt+1))
+        dz, dx, ds = self.problem_dims.dz, self.problem_dims.dx, 4
+        M_aug = np.zeros((dz+1, dx+1, ds+1))
 
-        M_aug[:dz, :dx, :dt] = obs_moments.M_ZXtY
+        M_aug[:dz, :dx, :ds] = obs_moments.M_ZXS
         # second moments
         M_aug[:dz, :dx, -1] = obs_moments.M_ZX
-        M_aug[:dz, -1, :dt] = obs_moments.M_ZtY
-        M_aug[-1, :dx, :dt] = obs_moments.M_XtY
+        M_aug[:dz, -1, :ds] = obs_moments.M_ZS
+        M_aug[-1, :dx, :ds] = obs_moments.M_XS
         # first moments
         M_aug[:dz, -1, -1] = obs_moments.E_Z
         M_aug[-1, :dx, -1] = obs_moments.E_X
-        M_aug[-1, -1, :dt] = obs_moments.E_tY
+        M_aug[-1, -1, :ds] = obs_moments.E_S
         # zero-th moment
         M_aug[-1, -1, -1] = 1
 
@@ -41,19 +91,29 @@ class TensorDecomposition:
             factors = res.factors
             Z_factor = factors[0]
             X_factor = factors[1]
-            tY_factor = factors[2]
+            S_factor = factors[2]
         elif self.decomposition_method == "parafac_power":
             res = parafac_power_iteration(M_aug, rank)
             weights, factors = res[0], res[1]
             Z_factor = factors[0]
             X_factor = factors[1]
-            tY_factor = factors[2]
+            S_factor = factors[2]
         else:
             raise ValueError
 
+        Zscale = Z_factor[-1, :]
+        Xscale = X_factor[-1, :]
+        Sscale = S_factor[-1, :]
+        EZ_U = np.einsum("zu,u->zu", Z_factor, Zscale ** -1)
+        EX_U = np.einsum("xu,u->xu", X_factor, Xscale ** -1)
+        ES_U = np.einsum("su,u->su", S_factor, Sscale ** -1)
+        Pu = np.einsum("u,u,u,u->u", weights, Zscale, Xscale, Sscale)
         return MixtureMoments(
-            Pu=weights,
-            E_Z_U={u: Z_factor[:, u] for u in [0, 1]},
-            E_X_U={u: X_factor[:, u] for u in [0, 1]},
-            E_tY_U={u: tY_factor[:, u] for u in [0, 1]},
+            Pu=Pu,
+            EZ_U=EZ_U,
+            EX_U=EX_U,
+            ES_U=ES_U,
+            E_Z_U={u: EZ_U[:, u] for u in [0, 1]},
+            E_X_U={u: EX_U[:, u] for u in [0, 1]},
+            E_S_U={u: ES_U[:, u] for u in [0, 1]},
         ) 

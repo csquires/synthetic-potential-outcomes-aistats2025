@@ -32,20 +32,20 @@ def compute_empirical_moments(
     Zsamples = obs_samples[:, problem_dims.z_ixs]
     Xsamples = obs_samples[:, problem_dims.x_ixs]
     Ysamples = obs_samples[:, problem_dims.y_ix]
-    Tsamples = (obs_samples[:, problem_dims.t_ix] == np.array([[0], [1]])).T
-    tYsamples = np.einsum("i,it->it", Ysamples, Tsamples)
+    Tsamples = obs_samples[:, problem_dims.t_ix]
+    Ssamples = np.concatenate((Ysamples * Tsamples, Ysamples * (1 - Tsamples)))  # TODO: check this concatenates on the correct axis
     nsamples = obs_samples.shape[0]
 
     # first moments
     E_Z = Zsamples.mean(axis=0)
     E_X = Xsamples.mean(axis=0)
-    E_tY = tYsamples.mean(axis=0)
+    E_S = Ssamples.mean(axis=0)
     # second moments
     M_ZX = np.einsum("iz,ix->zx", Zsamples, Xsamples) / nsamples
-    M_ZtY = np.einsum("iz,it->zt", Zsamples, tYsamples) / nsamples
-    M_XtY = np.einsum("ix,it->xt", Xsamples, tYsamples) / nsamples
+    M_ZS = np.einsum("iz,is->zs", Zsamples, Ssamples) / nsamples
+    M_XS = np.einsum("ix,is->zs", Xsamples, Ssamples) / nsamples
     # third moments
-    M_ZXtY = np.einsum("iz,ix,it->zxt", Zsamples, Xsamples, tYsamples) / nsamples
+    M_ZXS = np.einsum("iz,ix,is->zxs", Zsamples, Xsamples, Ssamples) / nsamples
 
     # === CONDITIONAL ===
     E_Z_T = dict()
@@ -66,13 +66,13 @@ def compute_empirical_moments(
         # first moments
         E_Z, 
         E_X, 
-        E_tY,
+        E_S,
         # second moments
         M_ZX, 
-        M_ZtY, 
-        M_XtY,
+        M_ZS, 
+        M_XS,
         # third moments
-        M_ZXtY,
+        M_ZXS,
         # conditional first moments
         E_Z_T, 
         E_X_T,

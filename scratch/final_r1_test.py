@@ -10,7 +10,7 @@ from src.observable_moments.empirical_moments import compute_empirical_moments, 
 from src.observable_moments.population_moments_discrete import compute_observable_moments_discrete
 from src.mixture_moments.mixture_moments_discrete import compute_mixture_moments_discrete
 
-from src.methods.tensor_decomposition import TensorDecomposition
+from src.methods.tensor_decomposition import TensorDecompositionBinary
 
 np.random.seed(123)
 
@@ -29,9 +29,25 @@ true_mixture_moments = compute_mixture_moments_discrete(marginal)
 # moments = compute_empirical_moments(generator.problem_dims, new_samples)
 
 # ==== RUN METHOD ====
-td = TensorDecomposition(generator.problem_dims, decomposition_method="parafac")
+td = TensorDecompositionBinary(generator.problem_dims, decomposition_method="parafac")
 res = td.fit(obs_moments)
 
 
+print("==== RES ====")
 pprint(asdict(res))
-pprint(asdict(obs_moments))
+print("==== TRUE ====")
+pprint(asdict(true_mixture_moments))
+# print("==== OBS MOMENTS ====")
+# pprint(asdict(obs_moments))
+
+
+M_ZXS_2 = np.einsum("u,zu,xu,su->zxs", 
+    true_mixture_moments.Pu,
+    true_mixture_moments.EZ_U,
+    true_mixture_moments.EX_U,
+    true_mixture_moments.ES_U,
+)
+
+print(np.linalg.matrix_rank(true_mixture_moments.EZ_U))
+print(np.linalg.matrix_rank(true_mixture_moments.EX_U))
+print(np.linalg.matrix_rank(true_mixture_moments.ES_U))
