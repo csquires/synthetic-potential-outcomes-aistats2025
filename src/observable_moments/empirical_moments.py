@@ -2,7 +2,7 @@
 import numpy as np
 
 # === IMPORTS: LOCAL ===
-from src.problem_dims import ProblemDimensions
+from src.problem_dims import GeneralProblemDimensions
 from src.observable_moments import ObservableMoments
 
 
@@ -25,7 +25,7 @@ def binary_feature_map_single(obs_samples):
 
 
 def compute_empirical_moments(
-    problem_dims: ProblemDimensions,
+    problem_dims: GeneralProblemDimensions,
     obs_samples: np.ndarray
 ):
     # === UNCONDITIONAL ===

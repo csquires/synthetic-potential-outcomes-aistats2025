@@ -3,7 +3,7 @@ import numpy as np
 from tensorly.decomposition import parafac, parafac_power_iteration
 
 # === IMPORTS: LOCAL ===
-from src.problem_dims import ProblemDimensions
+from src.problem_dims import GeneralProblemDimensions
 from src.data_generation.binary_generator import BinaryGenerator
 from src.observable_moments.population_moments_discrete import compute_observable_moments_discrete
 
@@ -14,7 +14,7 @@ nz = 2
 nx = 3
 ngroups = 2
 ntreatments = 2
-problem_dims = ProblemDimensions(nz, nx, ngroups, ntreatments)
+problem_dims = GeneralProblemDimensions(nz, nx, ngroups, ntreatments)
 
 # ==== DEFINE DATA GENERATOR ====
 generator = BinaryGenerator(problem_dims, matching_coef=0.25, treatment_coef=0.25)

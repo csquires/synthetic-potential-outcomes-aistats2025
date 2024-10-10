@@ -2,7 +2,7 @@
 import numpy as np
 
 # === IMPORTS: LOCAL ===
-from src.problem_dims import ProblemDimensions
+from src.problem_dims import GeneralProblemDimensions
 
 
 def complement(nvariables: int, subset: int):
@@ -24,7 +24,7 @@ class Marginal:
 
 
 class MarginalsCalculator:
-    def __init__(self, config: ProblemDimensions, full_samples: np.ndarray):
+    def __init__(self, config: GeneralProblemDimensions, full_samples: np.ndarray):
         self.config = config
         self.full_samples = full_samples
 

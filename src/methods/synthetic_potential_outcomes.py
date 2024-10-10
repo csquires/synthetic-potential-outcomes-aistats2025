@@ -6,7 +6,7 @@ from typing import List, Dict
 import numpy as np
 
 # === IMPORTS: LOCAL ===
-from src.problem_dims import ProblemDimensions
+from src.problem_dims import GeneralProblemDimensions
 from src.observable_moments import ObservableMoments
 from src.mixture_utils import prony, matrix_pencil
 
@@ -25,7 +25,7 @@ class HistoryItem:
 class SyntheticPotentialOutcomes:
     def __init__(
             self, 
-            problem_dims: ProblemDimensions, 
+            problem_dims: GeneralProblemDimensions, 
             decomposition_method: str = "matrix_pencil"
         ):
         self.problem_dims = problem_dims

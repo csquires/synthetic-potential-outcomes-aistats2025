@@ -27,11 +27,11 @@ def lookup_binary(Vab: np.ndarray, avals, bvals):
 class BinaryGeneratorMain:
     def __init__(
             self, 
-            lambda_treatment: float = 0,  # (0 = U->T only), (1 = W->T only)
-            lambda_outcome: float = 0  # (0 = T,U->Y only), (1 = T,X->Y only)
+            zt_strength: float = 0,
+            xy_strength: float = 0
         ):
-        self.lambda_treatment = lambda_treatment
-        self.lambda_outcome = lambda_outcome
+        self.zt_strength = zt_strength
+        self.xy_strength = xy_strength
         self.problem_dims = BinaryProblemDimensions(nz=1, nx=1, ngroups=2, ntreatments=2)
 
         # P(U)
@@ -48,7 +48,7 @@ class BinaryGeneratorMain:
         self.Px_u[:, 1] = np.array([1/4, 3/4])  # given U = 1
 
         # P(T | Z, U)
-        a = lambda_treatment
+        a = zt_strength
         self.Pt_zu = np.zeros((2, 2, 2))
         self.Pt_zu[:, 0, 0] = np.array([1/4, 3/4])              # given Z = 0, U = 0
         self.Pt_zu[:, 0, 1] = np.array([3/4 - a/2, 1/4 + a/2])  # given Z = 0, U = 1
@@ -57,7 +57,7 @@ class BinaryGeneratorMain:
 
         # E(Y0 | X, U)
         self.Py0_xu = np.zeros((2, 2, 2))
-        b = self.lambda_outcome
+        b = self.xy_strength
         self.Py0_xu[:, 0, 0] = np.array([1/4, 3/4])                # given X = 0, U = 0
         self.Py0_xu[:, 0, 1] = np.array([3/4 - b/2, 1/4 + b/2])    # given X = 0, U = 1
         self.Py0_xu[:, 1, 0] = np.array([1/4 + b/2, 3/4 - b/2])    # given X = 1, U = 0
@@ -65,7 +65,7 @@ class BinaryGeneratorMain:
 
         # E(Y1 | X, U)
         self.Py1_xu = np.zeros((2, 2, 2))
-        b = self.lambda_outcome
+        b = self.xy_strength
         self.Py1_xu[:, 0, 0] = np.array([3/4, 1/4])                # given X = 0, U = 0
         self.Py1_xu[:, 0, 1] = np.array([1/4 + b/2, 3/4 - b/2])    # given X = 0, U = 1
         self.Py1_xu[:, 1, 0] = np.array([3/4 - b/2, 1/4 + b/2])    # given X = 1, U = 0
