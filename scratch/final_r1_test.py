@@ -30,7 +30,7 @@ true_mixture_moments = compute_mixture_moments_discrete(marginal)
 
 # ==== RUN METHOD ====
 td = TensorDecompositionBinary(generator.problem_dims, decomposition_method="parafac")
-res = td.fit(obs_moments)
+res = td.fit(obs_moments, check_recovery=True)
 
 
 print("==== RES ====")

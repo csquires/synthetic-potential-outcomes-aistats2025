@@ -3,24 +3,15 @@ import numpy as np
 from tensorly.decomposition import parafac, parafac_power_iteration
 
 # === IMPORTS: LOCAL ===
-from src.problem_dims import BinaryProblemDimensions
-from src.data_generation.binary_generator import BinaryGenerator
+from src.data_generation.generator_main import BinaryGeneratorMain
 from src.observable_moments.population_moments_discrete import compute_observable_moments_discrete
 from src.mixture_moments.mixture_moments_discrete import compute_mixture_moments_discrete
 
 
 np.random.seed(123)
-# ==== DEFINE THE PROBLEM CONFIGURATION ====
-nz = 2
-nx = 3
-ngroups = 2
-ntreatments = 2
-problem_dims = BinaryProblemDimensions(nz, nx, ngroups, ntreatments)
-
 # ==== DEFINE DATA GENERATOR ====
-generator = BinaryGenerator(problem_dims, matching_coef=0.25, treatment_coef=0.25)
+generator = BinaryGeneratorMain(zt_strength=0, xy_strength=0)
 marginal = generator.true_marginal()
-marginal = marginal.reshape(2**nz, 2**nx, 2, ntreatments, ngroups)
 
 
 oracle_moments = compute_observable_moments_discrete(marginal)
@@ -37,22 +28,25 @@ rank = 2
 
 PARAFAC = True
 if PARAFAC:
-    res = parafac(M_ZXS, rank, n_iter_max=10000)
+    res = parafac(M_ZXS, rank, n_iter_max=10000, init="random")
     weights = res.weights
     factors = res.factors
     Z_factor = factors[0]
     X_factor = factors[1]
     S_factor = factors[2]
 else:
-    res = parafac_power_iteration(M_ZXS, rank)
+    res = parafac_power_iteration(M_ZXS, rank, n_repeat=30, n_iteration=30)
     weights, factors = res[0], res[1]
     Z_factor = factors[0]
     X_factor = factors[1]
     S_factor = factors[2]
 
 P = np.einsum("u,zu,xu,tu->zxt", weights, Z_factor, X_factor, S_factor)
+P2 = np.einsum("u,zu,xu,tu->zxt", mixture_moments.Pu, mixture_moments.EX_U, mixture_moments.EZ_U, mixture_moments.ES_U)
 diff = np.max(np.abs(P - M_ZXS))
+diff2 = np.max(np.abs(P2 - M_ZXS))
 print(diff)
+print(diff2)
 
 
 

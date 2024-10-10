@@ -18,11 +18,10 @@ class TensorDecompositionBinary:
         self.problem_dims = problem_dims
         self.decomposition_method = decomposition_method
 
-    def fit(self, obs_moments: ObservableMoments):
+    def fit(self, obs_moments: ObservableMoments, check_recovery=False):
         rank = 2
         if self.decomposition_method == "parafac":
-            res = parafac(obs_moments.M_ZXS, rank, n_iter_max=10000, return_errors=True)
-            breakpoint()
+            res = parafac(obs_moments.M_ZXS, rank, n_iter_max=10000, init="random")
             weights = res.weights
             factors = res.factors
             Z_factor = factors[0]
@@ -36,6 +35,13 @@ class TensorDecompositionBinary:
             S_factor = factors[2]
         else:
             raise ValueError
+    
+        if check_recovery:
+            Rec = cp_to_tensor(res)
+            diff = np.max(np.abs(Rec - obs_moments.M_ZXS))
+            print("difference between M_ZXS and recovered:", diff)
+            if diff > 0.0001:
+                breakpoint()
 
         Zscale = Z_factor.sum(axis=0)
         Xscale = X_factor.sum(axis=0)
@@ -44,9 +50,7 @@ class TensorDecompositionBinary:
         EX_U = np.einsum("xu,u->xu", X_factor, Xscale ** -1)
         Pu = weights / Wscale
         ES_U = np.einsum("su,u,u->su", S_factor, Zscale, Xscale) * Wscale
-
-        Rec = cp_to_tensor(res)
-        breakpoint()
+        
         return MixtureMoments(
             Pu=Pu,
             EZ_U=EZ_U,

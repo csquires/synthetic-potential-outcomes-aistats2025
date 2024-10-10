@@ -58,18 +58,18 @@ class BinaryGeneratorMain:
         # E(Y0 | X, U)
         self.Py0_xu = np.zeros((2, 2, 2))
         b = self.xy_strength
-        self.Py0_xu[:, 0, 0] = np.array([1/4, 3/4])                # given X = 0, U = 0
-        self.Py0_xu[:, 0, 1] = np.array([3/4 - b/2, 1/4 + b/2])    # given X = 0, U = 1
-        self.Py0_xu[:, 1, 0] = np.array([1/4 + b/2, 3/4 - b/2])    # given X = 1, U = 0
-        self.Py0_xu[:, 1, 1] = np.array([3/4, 1/4])                # given X = 1, U = 1
+        self.Py0_xu[:, 0, 0] = 1/8 * np.array([1, 7])                   # given X = 0, U = 0
+        self.Py0_xu[:, 0, 1] = 1/8 * np.array([7 - 6 * b, 1 + 6 * b])   # given X = 0, U = 1
+        self.Py0_xu[:, 1, 0] = 1/8 * np.array([1 + 6 * b, 7 - 6 * b])   # given X = 1, U = 0
+        self.Py0_xu[:, 1, 1] = 1/8 * np.array([7, 1])                   # given X = 1, U = 1
 
         # E(Y1 | X, U)
         self.Py1_xu = np.zeros((2, 2, 2))
         b = self.xy_strength
-        self.Py1_xu[:, 0, 0] = np.array([3/4, 1/4])                # given X = 0, U = 0
-        self.Py1_xu[:, 0, 1] = np.array([1/4 + b/2, 3/4 - b/2])    # given X = 0, U = 1
-        self.Py1_xu[:, 1, 0] = np.array([3/4 - b/2, 1/4 + b/2])    # given X = 1, U = 0
-        self.Py1_xu[:, 1, 1] = np.array([1/4, 3/4])                # given X = 1, U = 1
+        self.Py1_xu[:, 0, 0] = 1/8 * np.array([7, 1])                   # given X = 0, U = 0
+        self.Py1_xu[:, 0, 1] = 1/8 * np.array([1 + 6 * b, 7 - 6 * b])   # given X = 0, U = 1
+        self.Py1_xu[:, 1, 0] = 1/8 * np.array([7 - 6 * b, 1 + 6 * b])   # given X = 1, U = 0
+        self.Py1_xu[:, 1, 1] = 1/8 * np.array([1, 7])                   # given X = 1, U = 1
 
         # E(Y | X, T, U) --- repetitive, but convenient
         self.Py_xtu = np.zeros((2, 2, 2, 2))

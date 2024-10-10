@@ -33,8 +33,10 @@ def compute_empirical_moments(
     Xsamples = obs_samples[:, problem_dims.x_ixs]
     Ysamples = obs_samples[:, problem_dims.y_ix]
     Tsamples = obs_samples[:, problem_dims.t_ix]
-    Ssamples = np.concatenate((Ysamples * Tsamples, Ysamples * (1 - Tsamples)))  # TODO: check this concatenates on the correct axis
     nsamples = obs_samples.shape[0]
+    Ssamples = np.zeros((nsamples, 2))
+    Ssamples[:, 0] = Ysamples * Tsamples
+    Ssamples[:, 1] = Ysamples * (1 - Tsamples)
 
     # first moments
     E_Z = Zsamples.mean(axis=0)
@@ -43,7 +45,7 @@ def compute_empirical_moments(
     # second moments
     M_ZX = np.einsum("iz,ix->zx", Zsamples, Xsamples) / nsamples
     M_ZS = np.einsum("iz,is->zs", Zsamples, Ssamples) / nsamples
-    M_XS = np.einsum("ix,is->zs", Xsamples, Ssamples) / nsamples
+    M_XS = np.einsum("ix,is->xs", Xsamples, Ssamples) / nsamples
     # third moments
     M_ZXS = np.einsum("iz,ix,is->zxs", Zsamples, Xsamples, Ssamples) / nsamples
 
