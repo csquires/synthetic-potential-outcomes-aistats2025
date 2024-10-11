@@ -1,6 +1,6 @@
 # === IMPORTS: THIRD-PARTY ===
 import numpy as np
-from tensorly.decomposition import parafac, parafac_power_iteration
+from tensorly.decomposition import parafac, parafac_power_iteration, non_negative_parafac
 from tensorly.cp_tensor import cp_to_tensor
 
 # === IMPORTS: LOCAL ===
@@ -29,6 +29,12 @@ class TensorDecompositionBinary:
             S_factor = factors[2]
         elif self.decomposition_method == "parafac_power":
             res = parafac_power_iteration(obs_moments.M_ZXS, rank)
+            weights, factors = res[0], res[1]
+            Z_factor = factors[0]
+            X_factor = factors[1]
+            S_factor = factors[2]
+        elif self.decomposition_method == "nn_parafac":
+            res = non_negative_parafac(obs_moments.M_ZXS, rank, init="random")
             weights, factors = res[0], res[1]
             Z_factor = factors[0]
             X_factor = factors[1]

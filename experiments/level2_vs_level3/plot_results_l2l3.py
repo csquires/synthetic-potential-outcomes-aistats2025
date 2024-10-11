@@ -20,6 +20,15 @@ plt.rcParams['text.latex.preamble'] = r'\usepackage{amsfonts}'
 FIGURE_FOLDER = "experiments/level2_vs_level3/figures"
 
 
+def mixture2mte(estimated_mixture: MixtureMoments):
+    est_Pytu = estimated_mixture.ES_U.reshape((2, 2, 2))
+    est_Ptu = np.einsum("ytu->tu", est_Pytu)
+    est_Py_tu = np.einsum("ytu,tu->ytu", est_Pytu, est_Ptu ** -1)
+    EY1_U = est_Py_tu[1, 1]
+    EY0_U = est_Py_tu[1, 0]
+    return EY1_U - EY0_U
+
+
 def mte_error(
     true_source_probs,
     true_mtes,
@@ -62,11 +71,16 @@ zt_strengths = results["zt_strengths"]
 true_dists = results["true_dists"]
 estimated_source_probs = results["estimated_source_probs"]
 estimated_mtes = results["estimated_mtes"]
-estimate_mixtures = results["estimated_mixtures"]
-
-
+estimated_mixtures = results["estimated_mixtures"]
 nruns = estimated_source_probs[0].shape[0]
+
+estimated_mtes_mixtures = {
+    zt_strength: np.zeros((nruns, 2))
+    for zt_strength in zt_strengths
+}
+
 mte_errors = np.zeros((len(zt_strengths), nruns))
+mte_errors_parafac = np.zeros((len(zt_strengths), nruns))
 mixture_errors = np.zeros((len(zt_strengths), nruns))
 for s_ix, zt_strength in enumerate(zt_strengths):
     # get true moments
@@ -77,7 +91,9 @@ for s_ix, zt_strength in enumerate(zt_strengths):
     for r_ix in range(nruns):
         estimated_source_probs_mu = estimated_source_probs[zt_strength][r_ix]
         estimated_mtes_mu = estimated_mtes[zt_strength][r_ix]
-        estimated_mixture_moments_mu = estimate_mixtures[zt_strength][r_ix]
+        estimated_mixture_moments_mu: MixtureMoments = estimated_mixtures[zt_strength][r_ix]
+        estimated_mtes_mixture_mu = mixture2mte(estimated_mixture_moments_mu)
+        estimated_mtes_mixtures[zt_strength][r_ix] = estimated_mtes_mixture_mu
 
         mte_errors[s_ix, r_ix] = mte_error(
             true_source_probs_mu,
@@ -88,6 +104,12 @@ for s_ix, zt_strength in enumerate(zt_strengths):
         mixture_errors[s_ix, r_ix] = mixture_error(
             true_dists[zt_strength], 
             estimated_mixture_moments_mu
+        )
+        mte_errors_parafac[s_ix, r_ix] = mte_error(
+            true_source_probs_mu,
+            true_mtes_mu,
+            estimated_mixture_moments_mu.Pu,
+            estimated_mtes_mixture_mu
         )
 
 
@@ -127,9 +149,13 @@ ax0_upper = ax0_middle + ax0_stds
 # ax0_upper = np.quantile(mixture_errors, 0.75, axis=1)
 
 ax1_middle = np.mean(mte_errors, axis=1)
-ax1_stds = np.std(mixture_errors, axis=1)
+ax1_stds = np.std(mte_errors, axis=1)
 ax1_lower = ax1_middle - ax1_stds
 ax1_upper = ax1_middle + ax1_stds
+ax1_middle_parafac = np.mean(mte_errors_parafac, axis=1)
+ax1_stds_parafac = np.std(mte_errors_parafac, axis=1)
+ax1_lower_parafac = ax1_middle_parafac - ax1_stds
+ax1_upper_parafac = ax1_middle_parafac + ax1_stds
 # ax1_lower = np.quantile(mte_errors, 0.25, axis=1)
 # ax1_upper = np.quantile(mte_errors, 0.75, axis=1)
 
@@ -142,10 +168,13 @@ axes[0].set_ylabel(fr"Mixture estimation error", fontsize=24)
 axes[0].set_xticklabels([])
 
 axes[1].axhline(ax1_line, linestyle="--", color="gray")
-axes[1].plot(zt_strengths, ax1_middle)
+axes[1].plot(zt_strengths, ax1_middle, label="SPO")
 axes[1].fill_between(zt_strengths, ax1_lower, ax1_upper, alpha=0.5)
+axes[1].plot(zt_strengths, ax1_middle_parafac, label="NN-CP")
+axes[1].fill_between(zt_strengths, ax1_lower_parafac, ax1_upper_parafac, alpha=0.5)
 axes[1].set_ylim(*ax1_ylim)
 axes[1].set_xlabel(fr"$\mu_{{zt}}$", fontsize=24)
+axes[1].legend()
 axes[1].set_ylabel(fr"MTE estimation error", fontsize=24)
 
 

@@ -41,7 +41,7 @@ for zt_strength in zt_strengths:
         spo = SyntheticPotentialOutcomes(generator.problem_dims, decomposition_method="matrix_pencil")
         spo_res = spo.fit(moments)
 
-        td = TensorDecompositionBinary(generator.problem_dims, decomposition_method="parafac")
+        td = TensorDecompositionBinary(generator.problem_dims, decomposition_method="nn_parafac")
         td_res = td.fit(moments)
 
         # === SAVE RESULTS ===

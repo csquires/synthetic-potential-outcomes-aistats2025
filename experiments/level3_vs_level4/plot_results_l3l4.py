@@ -10,6 +10,7 @@ import seaborn as sns
 
 # === IMPORTS: LOCAL ===
 from src.causal_moments.causal_moments_discrete import compute_potential_outcome_moments_discrete
+from src.mixture_moments import MixtureMoments
 
 plt.rcParams["text.usetex"] = True
 plt.rc('font', family='serif')
@@ -32,6 +33,14 @@ def mte_error(
     return term1 + term2
 
 
+def mixture2mte(estimated_mixture: MixtureMoments):
+    est_Pytu = estimated_mixture.ES_U.reshape((2, 2, 2))
+    est_Ptu = np.einsum("ytu->tu", est_Pytu)
+    est_Py_tu = np.einsum("ytu,tu->ytu", est_Pytu, est_Ptu ** -1)
+    EY1_U = est_Py_tu[1, 1]
+    EY0_U = est_Py_tu[1, 0]
+    return EY1_U - EY0_U
+
 
 # === LOAD RESULTS ===
 results = pickle.load(open("experiments/level3_vs_level4/results.pkl", "rb"))
@@ -40,10 +49,12 @@ true_dists = results["true_dists"]
 estimated_source_probs = results["estimated_source_probs"]
 estimated_mtes = results["estimated_mtes"]
 estimated_ates = results["estimated_ates"]
+estimated_mixtures = results["estimated_mixtures"]
 
 
 nruns = estimated_source_probs[0].shape[0]
 mte_errors = np.zeros((len(xy_strengths), nruns))
+mte_errors_parafac = np.zeros((len(xy_strengths), nruns))
 ate_errors = np.zeros((len(xy_strengths), nruns))
 for s_ix, xy_strength in enumerate(xy_strengths):
     # get true moments
@@ -55,6 +66,9 @@ for s_ix, xy_strength in enumerate(xy_strengths):
     for r_ix in range(nruns):
         estimated_source_probs_r = estimated_source_probs[xy_strength][r_ix]
         estimated_mtes_r = estimated_mtes[xy_strength][r_ix]
+        estimated_mixture_moments_mu: MixtureMoments = estimated_mixtures[xy_strength][r_ix]
+        estimated_mtes_mixture_mu = mixture2mte(estimated_mixture_moments_mu)
+
         estimated_ate_r = estimated_ates[xy_strength][r_ix]
         mte_errors[s_ix, r_ix] = mte_error(
             true_source_probs_mu,
@@ -63,6 +77,12 @@ for s_ix, xy_strength in enumerate(xy_strengths):
             estimated_mtes_r
         )
         ate_errors[s_ix, r_ix] = (estimated_ate_r - true_ate_mu)**2
+        mte_errors_parafac[s_ix, r_ix] = mte_error(
+            true_source_probs_mu,
+            true_mtes_mu,
+            estimated_mixture_moments_mu.Pu,
+            estimated_mtes_mixture_mu
+        )
 
 
 # ngroups = 2
@@ -97,6 +117,10 @@ ax0_middle = np.mean(mte_errors, axis=1)
 ax0_stds = np.std(mte_errors, axis=1)
 ax0_lower = ax0_middle - ax0_stds
 ax0_upper = ax0_middle + ax0_stds
+ax0_middle_parafac = np.mean(mte_errors_parafac, axis=1)
+ax0_stds_parafac = np.std(mte_errors_parafac, axis=1)
+ax0_lower_parafac = ax0_middle_parafac - ax0_stds_parafac
+ax0_upper_parafac = ax0_middle_parafac + ax0_stds_parafac
 # ax0_lower = np.quantile(mte_errors, 0.25, axis=1)
 # ax0_upper = np.quantile(mte_errors, 0.75, axis=1)
 
@@ -111,6 +135,8 @@ fig, axes = plt.subplots(2, 1, figsize=(4, 8))
 axes[0].axhline(ax0_line, linestyle="--", color="gray")
 axes[0].plot(xy_strengths, ax0_middle)
 axes[0].fill_between(xy_strengths, ax0_lower, ax0_upper, alpha=0.5)
+axes[0].plot(xy_strengths, ax0_middle_parafac)
+axes[0].fill_between(xy_strengths, ax0_lower_parafac, ax0_upper_parafac, alpha=0.5)
 axes[0].set_ylim(*ax0_ylim)
 axes[0].set_ylabel(fr"MTE estimation error", fontsize=24)
 axes[0].set_xticklabels([])

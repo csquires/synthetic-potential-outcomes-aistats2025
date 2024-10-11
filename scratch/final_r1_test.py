@@ -34,7 +34,7 @@ print("==== Empirical observable moments ====")
 pprint(asdict(empirical_obs_moments))
 
 # ==== RUN METHOD ====
-td = TensorDecompositionBinary(generator.problem_dims, decomposition_method="parafac")
+td = TensorDecompositionBinary(generator.problem_dims, decomposition_method="nn_parafac")
 res = td.fit(obs_moments, check_recovery=True)
 
 
