@@ -17,7 +17,13 @@ plt.rc('font', family='serif')
 plt.rcParams['text.latex.preamble'] = r'\usepackage{amsfonts}'
 
 FIGURE_FOLDER = "experiments/level3_vs_level4/figures"
-
+POSTER = True
+if POSTER:
+    FIGSIZE = (16, 8)
+    FILENAME = "l3_vs_l4_errors_poster.pdf"
+else:
+    FIGSIZE = (4,8)
+    FILENAME = "l3_vs_l4_errors.pdf"
 
 def mte_error(
     true_source_probs,
@@ -131,7 +137,7 @@ ax1_upper = ax1_middle + ax1_stds
 # ax1_lower = np.quantile(ate_errors, 0.25, axis=1)
 # ax1_upper = np.quantile(ate_errors, 0.75, axis=1)
 
-fig, axes = plt.subplots(2, 1, figsize=(4, 8))
+fig, axes = plt.subplots(2, 1, figsize=FIGSIZE)
 axes[0].axhline(ax0_line, linestyle="--", color="gray")
 axes[0].plot(xy_strengths, ax0_middle)
 axes[0].fill_between(xy_strengths, ax0_lower, ax0_upper, alpha=0.5)
@@ -150,4 +156,4 @@ axes[1].set_ylabel(fr"ATE estimation error", fontsize=24)
 
 
 plt.tight_layout()
-plt.savefig(f"{FIGURE_FOLDER}/l3_vs_l4_errors.pdf")
+plt.savefig(f"{FIGURE_FOLDER}/{FILENAME}.pdf")

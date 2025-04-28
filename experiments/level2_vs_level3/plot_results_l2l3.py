@@ -18,7 +18,13 @@ plt.rc('font', family='serif')
 plt.rcParams['text.latex.preamble'] = r'\usepackage{amsfonts}'
 
 FIGURE_FOLDER = "experiments/level2_vs_level3/figures"
-
+POSTER = True
+if POSTER:
+    FIGSIZE = (16,8)
+    FILENAME = "l3_vs_l4_errors_poster.pdf"
+else:
+    FIGSIZE = (4,8)
+    FILENAME = "l3_vs_l4_errors.pdf"
 
 def mixture2mte(estimated_mixture: MixtureMoments):
     est_Pytu = estimated_mixture.ES_U.reshape((2, 2, 2))
@@ -159,7 +165,7 @@ ax1_upper_parafac = ax1_middle_parafac + ax1_stds
 # ax1_lower = np.quantile(mte_errors, 0.25, axis=1)
 # ax1_upper = np.quantile(mte_errors, 0.75, axis=1)
 
-fig, axes = plt.subplots(2, 1, figsize=(4, 8))
+fig, axes = plt.subplots(2, 1, figsize=FIGSIZE)
 axes[0].axhline(ax0_line, linestyle="--", color="gray")
 axes[0].plot(zt_strengths, ax0_middle)
 axes[0].fill_between(zt_strengths, ax0_lower, ax0_upper, alpha=0.5)
@@ -179,4 +185,4 @@ axes[1].set_ylabel(fr"MTE estimation error", fontsize=24)
 
 
 plt.tight_layout()
-plt.savefig(f"{FIGURE_FOLDER}/l2_vs_l3_mte_errors.pdf")
+plt.savefig(f"{FIGURE_FOLDER}/{FILENAME}.pdf")
