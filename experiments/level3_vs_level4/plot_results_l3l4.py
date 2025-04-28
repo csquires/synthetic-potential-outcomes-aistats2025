@@ -18,6 +18,7 @@ plt.rcParams['text.latex.preamble'] = r'\usepackage{amsfonts}'
 
 FIGURE_FOLDER = "experiments/level3_vs_level4/figures"
 POSTER = True
+PLOT_PARAFAC = False
 if POSTER:
     FIGSIZE = (16, 8)
     FILENAME = "l3_vs_l4_errors_poster.pdf"
@@ -141,8 +142,9 @@ fig, axes = plt.subplots(2, 1, figsize=FIGSIZE)
 axes[0].axhline(ax0_line, linestyle="--", color="gray")
 axes[0].plot(xy_strengths, ax0_middle)
 axes[0].fill_between(xy_strengths, ax0_lower, ax0_upper, alpha=0.5)
-axes[0].plot(xy_strengths, ax0_middle_parafac)
-axes[0].fill_between(xy_strengths, ax0_lower_parafac, ax0_upper_parafac, alpha=0.5)
+if PLOT_PARAFAC:
+    axes[0].plot(xy_strengths, ax0_middle_parafac)
+    axes[0].fill_between(xy_strengths, ax0_lower_parafac, ax0_upper_parafac, alpha=0.5)
 axes[0].set_ylim(*ax0_ylim)
 axes[0].set_ylabel(fr"MTE estimation error", fontsize=24)
 axes[0].set_xticklabels([])

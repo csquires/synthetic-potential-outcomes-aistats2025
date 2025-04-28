@@ -19,12 +19,13 @@ plt.rcParams['text.latex.preamble'] = r'\usepackage{amsfonts}'
 
 FIGURE_FOLDER = "experiments/level2_vs_level3/figures"
 POSTER = True
+PLOT_PARAFAC = False
 if POSTER:
     FIGSIZE = (16,8)
-    FILENAME = "l3_vs_l4_errors_poster.pdf"
+    FILENAME = "l2_vs_l3_errors_poster.pdf"
 else:
     FIGSIZE = (4,8)
-    FILENAME = "l3_vs_l4_errors.pdf"
+    FILENAME = "l2_vs_l3_errors.pdf"
 
 def mixture2mte(estimated_mixture: MixtureMoments):
     est_Pytu = estimated_mixture.ES_U.reshape((2, 2, 2))
@@ -176,13 +177,15 @@ axes[0].set_xticklabels([])
 axes[1].axhline(ax1_line, linestyle="--", color="gray")
 axes[1].plot(zt_strengths, ax1_middle, label="SPO")
 axes[1].fill_between(zt_strengths, ax1_lower, ax1_upper, alpha=0.5)
-axes[1].plot(zt_strengths, ax1_middle_parafac, label="NN-CP")
-axes[1].fill_between(zt_strengths, ax1_lower_parafac, ax1_upper_parafac, alpha=0.5)
+if PLOT_PARAFAC:
+    axes[1].plot(zt_strengths, ax1_middle_parafac, label="NN-CP")
+    axes[1].fill_between(zt_strengths, ax1_lower_parafac, ax1_upper_parafac, alpha=0.5)
 axes[1].set_ylim(*ax1_ylim)
 axes[1].set_xlabel(fr"$\mu_{{zt}}$", fontsize=24)
-axes[1].legend()
+if PLOT_PARAFAC:
+    axes[1].legend()
 axes[1].set_ylabel(fr"MTE estimation error", fontsize=24)
 
 
 plt.tight_layout()
-plt.savefig(f"{FIGURE_FOLDER}/{FILENAME}.pdf")
+plt.savefig(f"{FIGURE_FOLDER}/{FILENAME}")
